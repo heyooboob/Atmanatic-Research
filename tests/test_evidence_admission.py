@@ -279,6 +279,88 @@ class EvidenceAdmissionTests(unittest.TestCase):
                 [self._complete_card()], registry, minimum_tier="B"
             )
 
+    def test_governed_admission_runs_domain_validator_with_resolved_sources(self):
+        cards = [self._complete_card()]
+        source = self._anonymous_source("source-1", "publisher-a")
+        observed = []
+
+        def validate_domain(card, sources):
+            observed.append((card, sources))
+            return []
+
+        self.assertIs(
+            validate_and_admit_governed_evidence(
+                cards,
+                {"sources": [source]},
+                domain_validators={"research-fixture": validate_domain},
+                now=datetime(2026, 1, 2, tzinfo=timezone.utc),
+            ),
+            cards,
+        )
+        self.assertEqual(observed, [(cards[0], (source,))])
+
+    def test_governed_admission_reports_named_domain_rejection(self):
+        source = self._anonymous_source("source-1", "publisher-a")
+
+        def validate_sample_size(card, sources):
+            return ["sample size is below 30", "control cohort is missing"]
+
+        with self.assertRaisesRegex(
+            ValueError,
+            "domain validator 'clinical-study': sample size is below 30; control cohort is missing",
+        ):
+            validate_and_admit_governed_evidence(
+                [self._complete_card()],
+                {"sources": [source]},
+                domain_validators={"clinical-study": validate_sample_size},
+            )
+
+    def test_governed_admission_rejects_malformed_domain_validator(self):
+        source = self._anonymous_source("source-1", "publisher-a")
+        with self.assertRaisesRegex(ValueError, "non-empty names and callable values"):
+            validate_and_admit_governed_evidence(
+                [self._complete_card()],
+                {"sources": [source]},
+                domain_validators={"not-callable": None},
+            )
+
+        with self.assertRaisesRegex(ValueError, "failed: must return an iterable of reasons"):
+            validate_and_admit_governed_evidence(
+                [self._complete_card()],
+                {"sources": [source]},
+                domain_validators={"bad-output": lambda card, sources: "rejected"},
+            )
+
+        def broken_validator(card, sources):
+            raise RuntimeError("domain service unavailable")
+
+        with self.assertRaisesRegex(
+            ValueError, "domain validator 'broken' failed: domain service unavailable"
+        ):
+            validate_and_admit_governed_evidence(
+                [self._complete_card()],
+                {"sources": [source]},
+                domain_validators={"broken": broken_validator},
+            )
+
+    def test_domain_validator_does_not_receive_malformed_card(self):
+        called = False
+
+        def validate_domain(card, sources):
+            nonlocal called
+            called = True
+            return []
+
+        card = self._complete_card()
+        del card["details"]
+        with self.assertRaisesRegex(ValueError, "missing fields: details"):
+            validate_and_admit_governed_evidence(
+                [card],
+                {"sources": [self._anonymous_source("source-1", "publisher-a")]},
+                domain_validators={"research-fixture": validate_domain},
+            )
+        self.assertFalse(called)
+
 
 if __name__ == "__main__":
     unittest.main()

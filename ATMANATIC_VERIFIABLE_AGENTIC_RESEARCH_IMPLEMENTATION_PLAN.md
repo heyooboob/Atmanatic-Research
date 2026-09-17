@@ -347,6 +347,13 @@ declare an `independence_group`; when multiple independent sources are
 required, missing group metadata fails closed. Runtime callers may strengthen
 the minimum tier but cannot weaken institutional policy.
 
+Domain-specific evidence requirements are injected as named caller-owned
+validators. They receive a structurally valid card and its resolved source
+definitions after generic source governance, and run before decision-grade
+admission. Rejection reasons, malformed output, and validator exceptions fail
+closed with the validator name preserved. Atmanatic defines this extension
+contract but does not own domain logic or dependencies.
+
 ### Deliverables
 
 - evidence-to-claim linkage rules;
@@ -354,6 +361,7 @@ the minimum tier but cannot weaken institutional policy.
 - identified-public-source policy and acquisition-receipt contracts;
 - qualitative and measurable falsifier contracts;
 - minimum source-count and source-independence policy;
+- caller-owned domain evidence validator interface;
 - review and challenge artifact schema;
 - adversarial test corpus;
 - rejection taxonomy;

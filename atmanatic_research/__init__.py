@@ -13,6 +13,7 @@ from .intelligence_contracts import (
 from .truth_review import TruthReview, require_truth_review, review_claim
 from .validity_standard import ValidityReview, require_validity_packet, validate_validity_packet
 from .evidence_admission import (
+    DomainEvidenceValidator,
     EvidenceAdmission,
     admit_evidence,
     require_decision_evidence,
@@ -74,6 +75,7 @@ __all__ = [
     "require_validity_packet",
     "validate_validity_packet",
     "EvidenceAdmission",
+    "DomainEvidenceValidator",
     "admit_evidence",
     "require_decision_evidence",
     "require_claim_evidence",

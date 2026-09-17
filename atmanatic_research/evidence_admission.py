@@ -4,7 +4,7 @@ from __future__ import annotations
 
 from dataclasses import dataclass
 from datetime import datetime, timezone
-from typing import Any
+from typing import Any, Callable, Iterable
 
 from .evidence_contracts import validate_evidence_card
 from .source_policy import (
@@ -16,6 +16,9 @@ from .source_policy import (
 )
 
 BLOCKED_STATUSES = {"stale_source", "conflict", "insufficient_independent_sources"}
+DomainEvidenceValidator = Callable[
+    [dict[str, Any], tuple[dict[str, Any], ...]], Iterable[str] | None
+]
 
 
 @dataclass(frozen=True)
@@ -88,6 +91,7 @@ def validate_and_admit_governed_evidence(
     minimum_tier: str | None = None,
     request_contexts: dict[str, dict[str, Any]] | None = None,
     acquisition_receipts: list[dict[str, Any]] | None = None,
+    domain_validators: dict[str, DomainEvidenceValidator] | None = None,
     now: datetime | None = None,
 ) -> list[dict[str, Any]]:
     """Apply source policy and acquisition provenance before evidence admission."""
@@ -95,8 +99,16 @@ def validate_and_admit_governed_evidence(
         raise ValueError("Governed evidence blocked: request_contexts must be an object")
     if acquisition_receipts is not None and not isinstance(acquisition_receipts, list):
         raise ValueError("Governed evidence blocked: acquisition_receipts must be a list")
+    if domain_validators is not None and not isinstance(domain_validators, dict):
+        raise ValueError("Governed evidence blocked: domain_validators must be an object")
     contexts = request_contexts or {}
     receipts = acquisition_receipts or []
+    validators = domain_validators or {}
+    for name, validator in validators.items():
+        if not isinstance(name, str) or not name.strip() or not callable(validator):
+            raise ValueError(
+                "Governed evidence blocked: domain validators require non-empty names and callable values"
+            )
     policies = registry.get("minimum_evidence", {})
     if not isinstance(policies, dict):
         raise SourcePolicyError("minimum_evidence must be an object")
@@ -179,7 +191,37 @@ def validate_and_admit_governed_evidence(
                 f"Governed evidence blocked: agent '{agent}' requires at least {minimum_independent} independent source groups"
             )
 
-    return validate_and_admit_evidence(cards, now=now)
+    for card in cards:
+        validate_evidence_card(card)
+        card_sources = tuple(
+            sources_by_agent[card["agent"]][source_id]
+            for source_id in card["source_ids"]
+        )
+        for name, validator in validators.items():
+            try:
+                findings = validator(
+                    dict(card), tuple(dict(source) for source in card_sources)
+                )
+                if findings is None:
+                    continue
+                if isinstance(findings, (str, bytes)):
+                    raise TypeError("must return an iterable of reasons")
+                reasons = tuple(findings)
+            except Exception as error:
+                raise ValueError(
+                    f"Governed evidence blocked: domain validator '{name}' failed: {error}"
+                ) from error
+            if not all(isinstance(reason, str) and reason.strip() for reason in reasons):
+                raise ValueError(
+                    f"Governed evidence blocked: domain validator '{name}' returned an invalid reason"
+                )
+            if reasons:
+                raise ValueError(
+                    f"Governed evidence blocked by domain validator '{name}': "
+                    + "; ".join(reasons)
+                )
+
+    return require_decision_evidence(cards, now=now)
 
 
 def require_claim_evidence(

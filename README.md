@@ -116,6 +116,28 @@ different URLs. When more than one independent source is required, every
 contributing source must declare its group. A caller may request a stricter
 authority tier but cannot weaken the registry's `minimum_tier`.
 
+Domain-specific evidence rules remain outside this package and can be injected
+as named validators. Each validator receives a copy of the validated evidence
+card and a tuple of its resolved source definitions. It returns no value or an
+empty iterable to pass, and non-empty rejection reasons to block admission:
+
+```python
+def validate_sample_size(card, sources):
+	if card["details"].get("sample_size", 0) < 30:
+		return ["sample size is below 30"]
+	return []
+
+validate_and_admit_governed_evidence(
+	cards,
+	registry,
+	domain_validators={"clinical-study": validate_sample_size},
+)
+```
+
+Validator names appear in rejection messages for auditability. Malformed
+outputs and validator exceptions fail closed. The consumer owns the domain
+logic, versions, dependencies, and scientific adequacy of each validator.
+
 ## Identified public sources
 
 Public sources that require request identification can declare that policy
