@@ -1,0 +1,14 @@
+[build-system]
+requires = ["setuptools>=68"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "atmanatic-research"
+version = "0.1.0"
+description = "Domain-neutral research, evidence, and validity contracts owned by Atmanatic Research Institution"
+requires-python = ">=3.11"
+dependencies = []
+
+[tool.setuptools.packages.find]
+where = ["."]
+include = ["atmanatic_research*", "validity_protocol*"]
