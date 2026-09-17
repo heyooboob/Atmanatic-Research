@@ -1,6 +1,28 @@
 import unittest
 
-from atmanatic_research import OrchestrationError, run_referee_loop
+from atmanatic_research import (
+    OrchestrationError,
+    ProposalEnvelope,
+    run_enveloped_referee_loop,
+    run_referee_loop,
+)
+
+
+def _proposal(proposal_id="proposal-1", parent_proposal_id=None, **overrides):
+    proposal = {
+        "schema_version": 1,
+        "proposal_id": proposal_id,
+        "parent_proposal_id": parent_proposal_id,
+        "producer": "research-agent",
+        "created_at": "2026-09-17T12:00:00Z",
+        "content_hash": "a" * 64,
+        "evidence_refs": ["evidence-1"],
+        "tool_versions": {"research-agent": "1.0"},
+        "payload": {"revision": 0},
+        "execution_authorized": False,
+    }
+    proposal.update(overrides)
+    return proposal
 
 
 class OrchestrationTests(unittest.TestCase):
@@ -243,6 +265,101 @@ class OrchestrationTests(unittest.TestCase):
 
         with self.assertRaisesRegex(OrchestrationError, "non-empty list"):
             run_referee_loop({}, [reviewer], reviser)
+
+
+class EnvelopedOrchestrationTests(unittest.TestCase):
+    def _reviewer(self, proposal):
+        self.assertIsInstance(proposal, ProposalEnvelope)
+        resolved = proposal.payload["revision"] == 1
+        return [{
+            "finding_id": "f-1",
+            "reviewer": "boundary-reviewer",
+            "review_purpose": "boundary_tester",
+            "evidence_refs": ["fixture:boundary"],
+            "severity": "blocker",
+            "disposition": "resolved" if resolved else "open",
+            "message": "boundary is explicit" if resolved else "boundary is missing",
+        }]
+
+    def _revision(self, proposal_id="proposal-2", parent_proposal_id="proposal-1", **overrides):
+        revised = _proposal(
+            proposal_id=proposal_id,
+            parent_proposal_id=parent_proposal_id,
+            content_hash="b" * 64,
+            payload={"revision": 1},
+            finding_responses=[{
+                "finding_id": "f-1",
+                "disposition": "addressed",
+                "response": "added an explicit boundary",
+                "evidence_refs": ["fixture:boundary-added"],
+            }],
+        )
+        revised.update(overrides)
+        return revised
+
+    def test_enveloped_loop_preserves_proposal_and_revision_ids(self):
+        result = run_enveloped_referee_loop(
+            _proposal(),
+            [self._reviewer],
+            lambda proposal, findings: self._revision(),
+        )
+        self.assertTrue(result.accepted, result.reasons)
+        self.assertEqual(len(result.rounds), 2)
+        self.assertEqual(result.rounds[0].proposal["proposal_id"], "proposal-1")
+        self.assertEqual(result.proposal["proposal_id"], "proposal-2")
+        self.assertEqual(result.proposal["parent_proposal_id"], "proposal-1")
+
+    def test_enveloped_loop_rejects_invalid_parent(self):
+        with self.assertRaisesRegex(OrchestrationError, "must match the preceding"):
+            run_enveloped_referee_loop(
+                _proposal(),
+                [self._reviewer],
+                lambda proposal, findings: self._revision(parent_proposal_id="other"),
+            )
+
+    def test_enveloped_loop_rejects_reused_id_across_revisions(self):
+        def reviewer(proposal):
+            return [{
+                "finding_id": "f-1",
+                "reviewer": "boundary-reviewer",
+                "review_purpose": "boundary_tester",
+                "evidence_refs": ["fixture:boundary"],
+                "severity": "blocker",
+                "disposition": "open",
+                "message": "another revision is required",
+            }]
+
+        revisions = iter([
+            self._revision(),
+            self._revision(
+                proposal_id="proposal-1",
+                parent_proposal_id="proposal-2",
+                content_hash="c" * 64,
+                payload={"revision": 2},
+            ),
+        ])
+        with self.assertRaisesRegex(OrchestrationError, "must be unique"):
+            run_enveloped_referee_loop(
+                _proposal(),
+                [reviewer],
+                lambda proposal, findings: next(revisions),
+            )
+
+    def test_enveloped_loop_rejects_metadata_only_revision(self):
+        with self.assertRaisesRegex(OrchestrationError, "no substantive progress"):
+            run_enveloped_referee_loop(
+                _proposal(),
+                [self._reviewer],
+                lambda proposal, findings: self._revision(payload={"revision": 0}),
+            )
+
+    def test_enveloped_loop_rejects_invalid_initial_envelope(self):
+        with self.assertRaisesRegex(OrchestrationError, "initial proposal envelope"):
+            run_enveloped_referee_loop(
+                _proposal(content_hash="invalid"),
+                [self._reviewer],
+                lambda proposal, findings: self._revision(),
+            )
 
 
 if __name__ == "__main__":

@@ -5,6 +5,8 @@ from __future__ import annotations
 from dataclasses import dataclass
 from typing import Any, Callable, Iterable
 
+from .proposal_contracts import ProposalContractError, ProposalEnvelope, validate_proposal_envelope
+
 _FINDING_SEVERITIES = {"blocker", "warning", "info"}
 _FINDING_DISPOSITIONS = {"open", "resolved"}
 _RESPONSE_DISPOSITIONS = {"addressed", "disputed"}
@@ -245,3 +247,70 @@ def run_referee_loop(
         current = revised
 
     raise AssertionError("bounded referee loop did not terminate")
+
+
+def run_enveloped_referee_loop(
+    proposal: dict[str, Any],
+    reviewers: Iterable[Callable[[ProposalEnvelope], Iterable[dict[str, Any]]]],
+    reviser: Callable[
+        [ProposalEnvelope, tuple[RefereeFinding, ...]], dict[str, Any]
+    ],
+    *,
+    max_revisions: int = 3,
+) -> OrchestrationResult:
+    """Run the referee loop with strict proposal identity and revision lineage."""
+    try:
+        initial = validate_proposal_envelope(proposal)
+    except ProposalContractError as error:
+        raise OrchestrationError(f"initial proposal envelope is invalid: {error}") from error
+    reviewer_list = tuple(reviewers)
+    if not reviewer_list:
+        raise OrchestrationError("at least one reviewer is required")
+    if not all(callable(reviewer) for reviewer in reviewer_list):
+        raise OrchestrationError("every reviewer must be callable")
+    if not callable(reviser):
+        raise OrchestrationError("reviser must be callable")
+    seen_proposal_ids = {initial.proposal_id}
+
+    def wrap_reviewer(
+        reviewer: Callable[[ProposalEnvelope], Iterable[dict[str, Any]]],
+    ) -> Callable[[dict[str, Any]], Iterable[dict[str, Any]]]:
+        def reviewed(current: dict[str, Any]) -> Iterable[dict[str, Any]]:
+            try:
+                envelope = validate_proposal_envelope(current)
+            except ProposalContractError as error:
+                raise OrchestrationError(
+                    f"proposal envelope is invalid during review: {error}"
+                ) from error
+            return reviewer(envelope)
+
+        return reviewed
+
+    def revise(
+        current: dict[str, Any], findings: tuple[RefereeFinding, ...]
+    ) -> dict[str, Any]:
+        current_envelope = validate_proposal_envelope(current)
+        revised = reviser(current_envelope, findings)
+        try:
+            revised_envelope = validate_proposal_envelope(revised)
+        except ProposalContractError as error:
+            raise OrchestrationError(f"revised proposal envelope is invalid: {error}") from error
+        if revised_envelope.parent_proposal_id != current_envelope.proposal_id:
+            raise OrchestrationError(
+                "revised proposal parent_proposal_id must match the preceding proposal_id"
+            )
+        if revised_envelope.proposal_id in seen_proposal_ids:
+            raise OrchestrationError("revised proposal_id must be unique within the run")
+        if dict(revised_envelope.payload) == dict(current_envelope.payload):
+            raise OrchestrationError("revised proposal payload made no substantive progress")
+        if revised_envelope.content_hash == current_envelope.content_hash:
+            raise OrchestrationError("revised proposal content_hash must change with its payload")
+        seen_proposal_ids.add(revised_envelope.proposal_id)
+        return revised
+
+    return run_referee_loop(
+        proposal,
+        tuple(wrap_reviewer(reviewer) for reviewer in reviewer_list),
+        revise,
+        max_revisions=max_revisions,
+    )

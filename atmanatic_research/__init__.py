@@ -48,6 +48,7 @@ from .orchestration import (
     OrchestrationResult,
     RefereeFinding,
     ReviewRound,
+    run_enveloped_referee_loop,
     run_referee_loop,
 )
 from .validity_governance import advance_with_review
@@ -116,6 +117,7 @@ __all__ = [
     "OrchestrationResult",
     "RefereeFinding",
     "ReviewRound",
+    "run_enveloped_referee_loop",
     "run_referee_loop",
     "advance_with_review",
     "PROPOSAL_SCHEMA_VERSION",

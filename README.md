@@ -137,6 +137,14 @@ recompute the payload hash or establish that cited evidence supports the
 proposal. Those checks belong to deterministic tooling and governed evidence
 admission.
 
+Use `run_enveloped_referee_loop()` when every proposal and revision must satisfy
+that envelope contract. Reviewers receive typed `ProposalEnvelope` values.
+Each revision must use a new `proposal_id`, set `parent_proposal_id` to the
+immediately preceding proposal, change its payload and declared content hash,
+and include the required finding responses. Proposal IDs cannot be reused
+within a run. The returned rounds retain each full proposal and its finding IDs,
+providing a replayable proposal-to-critique-to-revision chain.
+
 For decision-grade evidence, use `validate_and_admit_evidence()` when the
 caller wants one fail-closed entry point. It first applies the complete
 evidence-card contract and then applies freshness, provenance, status, and

@@ -437,6 +437,13 @@ Missing, duplicate, or unknown finding responses fail closed. Responses are
 preserved in the round history, and response-only edits do not satisfy the
 loop's substantive progress requirement.
 
+`run_enveloped_referee_loop()` applies the typed proposal contract throughout
+the loop. Every revision receives a unique proposal ID, identifies its immediate
+parent, changes both payload and declared content hash, and retains finding IDs
+and responses in round history. This establishes the proposal, critique, and
+revision identity chain; verification-result identifiers remain in their
+separate artifact envelopes.
+
 ### Deliverables
 
 - provider-neutral orchestration interface;
