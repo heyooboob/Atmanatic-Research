@@ -455,6 +455,12 @@ seen earlier in the run. The strict envelope loop applies the same rule to
 payloads independently of changing proposal IDs, timestamps, or declared
 hashes, preventing alternating-state retry cycles.
 
+Both loops support a monotonic total time budget checked around reviewer and
+reviser callbacks. Budget exhaustion rejects the run while preserving the last
+accepted proposal state. The package cannot interrupt a blocked external call;
+hard callback deadlines and cancellation remain responsibilities of the
+provider runtime or workflow engine.
+
 ### Deliverables
 
 - provider-neutral orchestration interface;

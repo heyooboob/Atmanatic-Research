@@ -367,6 +367,73 @@ class OrchestrationTests(unittest.TestCase):
         self.assertEqual(result.reasons, ("reviser repeated a prior proposal state",))
         self.assertEqual(len(result.rounds), 2)
 
+    def test_time_budget_exhaustion_after_review_blocks_acceptance(self):
+        times = iter([0.0, 0.0, 0.0, 2.0])
+
+        def reviewer(proposal):
+            return [{
+                "finding_id": "f-1",
+                "reviewer": "boundary-reviewer",
+                "review_purpose": "boundary_tester",
+                "evidence_refs": ["fixture:boundary"],
+                "severity": "info",
+                "disposition": "resolved",
+                "message": "boundary is explicit",
+            }]
+
+        result = run_referee_loop(
+            {},
+            [reviewer],
+            lambda proposal, findings: proposal,
+            time_budget_seconds=1.0,
+            clock=lambda: next(times),
+        )
+        self.assertFalse(result.accepted)
+        self.assertEqual(result.reasons, ("orchestration time budget exhausted",))
+        self.assertEqual(result.rounds, ())
+
+    def test_time_budget_exhaustion_after_revision_preserves_prior_proposal(self):
+        times = iter([0.0, 0.0, 0.0, 0.0, 0.0, 2.0])
+
+        def reviewer(proposal):
+            return [{
+                "finding_id": "f-1",
+                "reviewer": "falsifier",
+                "review_purpose": "falsifier",
+                "evidence_refs": ["counterexample:1"],
+                "severity": "blocker",
+                "disposition": "open",
+                "message": "counterexample remains",
+            }]
+
+        def reviser(proposal, findings):
+            return {
+                "revision": 1,
+                "finding_responses": [{
+                    "finding_id": "f-1",
+                    "disposition": "addressed",
+                    "response": "added counterexample handling",
+                    "evidence_refs": ["analysis:counterexample"],
+                }],
+            }
+
+        result = run_referee_loop(
+            {"revision": 0},
+            [reviewer],
+            reviser,
+            time_budget_seconds=1.0,
+            clock=lambda: next(times),
+        )
+        self.assertFalse(result.accepted)
+        self.assertEqual(result.proposal, {"revision": 0})
+        self.assertEqual(len(result.rounds), 1)
+
+    def test_time_budget_configuration_fails_closed(self):
+        with self.assertRaisesRegex(OrchestrationError, "must be positive"):
+            run_referee_loop({}, [lambda proposal: []], lambda proposal, findings: proposal, time_budget_seconds=0)
+        with self.assertRaisesRegex(OrchestrationError, "clock must be callable"):
+            run_referee_loop({}, [lambda proposal: []], lambda proposal, findings: proposal, clock=0)
+
 
 class EnvelopedOrchestrationTests(unittest.TestCase):
     def _reviewer(self, proposal):

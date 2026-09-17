@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 from dataclasses import dataclass
+from time import monotonic
 from typing import Any, Callable, Iterable
 
 from .proposal_contracts import ProposalContractError, ProposalEnvelope, validate_proposal_envelope
@@ -195,6 +196,17 @@ def _escalation_reasons(
     return reasons
 
 
+def _time_budget_result(
+    proposal: dict[str, Any], rounds: list[ReviewRound]
+) -> OrchestrationResult:
+    return OrchestrationResult(
+        accepted=False,
+        proposal=dict(proposal),
+        rounds=tuple(rounds),
+        reasons=("orchestration time budget exhausted",),
+    )
+
+
 def run_referee_loop(
     proposal: dict[str, Any],
     reviewers: Iterable[Callable[[dict[str, Any]], Iterable[dict[str, Any]]]],
@@ -205,6 +217,8 @@ def run_referee_loop(
         [dict[str, Any], tuple[RefereeFinding, ...]], Iterable[str] | None
     ]
     | None = None,
+    time_budget_seconds: float | None = None,
+    clock: Callable[[], float] | None = None,
 ) -> OrchestrationResult:
     """Review and revise a proposal with bounded, fail-closed retries.
 
@@ -224,16 +238,38 @@ def run_referee_loop(
         raise OrchestrationError("reviser must be callable")
     if escalation_policy is not None and not callable(escalation_policy):
         raise OrchestrationError("escalation_policy must be callable")
+    if time_budget_seconds is not None and (
+        not isinstance(time_budget_seconds, (int, float))
+        or isinstance(time_budget_seconds, bool)
+        or time_budget_seconds <= 0
+    ):
+        raise OrchestrationError("time_budget_seconds must be positive")
+    if clock is not None and not callable(clock):
+        raise OrchestrationError("clock must be callable")
+    clock_fn = clock or monotonic
+    started_at = clock_fn()
+
+    def budget_exhausted() -> bool:
+        return (
+            time_budget_seconds is not None
+            and clock_fn() - started_at >= time_budget_seconds
+        )
 
     current = proposal
     rounds: list[ReviewRound] = []
     seen_proposal_bodies = [_proposal_body(current)]
     for attempt in range(max_revisions + 1):
+        if budget_exhausted():
+            return _time_budget_result(current, rounds)
         findings: list[RefereeFinding] = []
         for reviewer in reviewer_list:
+            if budget_exhausted():
+                return _time_budget_result(current, rounds)
             if not callable(reviewer):
                 raise OrchestrationError("every reviewer must be callable")
             reviewer_findings = reviewer(current)
+            if budget_exhausted():
+                return _time_budget_result(current, rounds)
             if isinstance(reviewer_findings, (str, bytes)):
                 raise OrchestrationError("reviewer output must be an iterable of finding objects")
             findings.extend(_review(reviewer_findings))
@@ -287,7 +323,13 @@ def run_referee_loop(
                 rounds=tuple(rounds),
                 reasons=reasons,
             )
+        if budget_exhausted():
+            rounds.append(ReviewRound(attempt=attempt, proposal=dict(current), findings=reviewed))
+            return _time_budget_result(current, rounds)
         revised = reviser(dict(current), reviewed)
+        if budget_exhausted():
+            rounds.append(ReviewRound(attempt=attempt, proposal=dict(current), findings=reviewed))
+            return _time_budget_result(current, rounds)
         if not isinstance(revised, dict):
             raise OrchestrationError("reviser must return a proposal object")
         responses = _responses(revised.get("finding_responses"), reviewed)
@@ -332,6 +374,8 @@ def run_enveloped_referee_loop(
         [dict[str, Any], tuple[RefereeFinding, ...]], Iterable[str] | None
     ]
     | None = None,
+    time_budget_seconds: float | None = None,
+    clock: Callable[[], float] | None = None,
 ) -> OrchestrationResult:
     """Run the referee loop with strict proposal identity and revision lineage."""
     try:
@@ -394,4 +438,6 @@ def run_enveloped_referee_loop(
         revise,
         max_revisions=max_revisions,
         escalation_policy=escalation_policy,
+        time_budget_seconds=time_budget_seconds,
+        clock=clock,
     )

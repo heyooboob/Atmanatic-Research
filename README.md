@@ -159,6 +159,14 @@ envelope-aware loop separately rejects a payload that repeats under fresh
 proposal IDs or hashes. This prevents bounded retries from oscillating between
 previously rejected states while appearing to make progress.
 
+Both loops also accept `time_budget_seconds`. They use a monotonic clock and
+check the budget before and after each reviewer and reviser callback. Exhaustion
+returns a rejected result with the last accepted proposal state. An optional
+`clock` callable supports deterministic tests. This is a cooperative budget:
+it detects an overrun after an external callback returns but cannot interrupt a
+blocked model or service call. Consumers must enforce hard per-call timeouts in
+their provider runtime.
+
 For decision-grade evidence, use `validate_and_admit_evidence()` when the
 caller wants one fail-closed entry point. It first applies the complete
 evidence-card contract and then applies freshness, provenance, status, and
