@@ -426,6 +426,11 @@ evidence references, non-empty tool versions and payload, and explicit
 non-authority. Provider invocation and independent hash recomputation remain
 outside the package.
 
+`RefereeFinding` now requires one of the five declared review purposes plus
+unique, non-empty evidence references. Malformed purposes or unsupported
+findings fail closed before acceptance, and the typed finding preserves its
+review role and evidentiary basis for downstream audit.
+
 ### Deliverables
 
 - provider-neutral orchestration interface;

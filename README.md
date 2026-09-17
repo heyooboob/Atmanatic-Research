@@ -93,6 +93,14 @@ be structured, unresolved findings block acceptance, revisions are bounded by
 `max_revisions`, unchanged revisions are rejected as non-progress, and
 malformed reviewer output fails closed.
 
+Each referee finding declares `review_purpose` as one of `falsifier`,
+`assumption_auditor`, `provenance_auditor`, `boundary_tester`, or
+`implementation_contract_reviewer`. It must also include a non-empty, unique
+list of `evidence_refs` supporting the finding or its resolution. The resulting
+`RefereeFinding` preserves both fields as typed immutable values, so downstream
+audit code can distinguish reviewer roles and trace each disposition to its
+declared basis.
+
 Untrusted proposer output can first pass through
 `validate_proposal_envelope()`. It returns an immutable typed
 `ProposalEnvelope` containing a schema version, proposal and parent identities,

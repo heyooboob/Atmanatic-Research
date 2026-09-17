@@ -7,6 +7,13 @@ from typing import Any, Callable, Iterable
 
 _FINDING_SEVERITIES = {"blocker", "warning", "info"}
 _FINDING_DISPOSITIONS = {"open", "resolved"}
+_REVIEW_PURPOSES = {
+    "falsifier",
+    "assumption_auditor",
+    "provenance_auditor",
+    "boundary_tester",
+    "implementation_contract_reviewer",
+}
 
 
 class OrchestrationError(ValueError):
@@ -17,6 +24,8 @@ class OrchestrationError(ValueError):
 class RefereeFinding:
     finding_id: str
     reviewer: str
+    review_purpose: str
+    evidence_refs: tuple[str, ...]
     severity: str
     disposition: str
     message: str
@@ -40,7 +49,14 @@ class OrchestrationResult:
 def _finding(value: Any, index: int) -> RefereeFinding:
     if not isinstance(value, dict):
         raise OrchestrationError(f"referee finding {index} must be an object")
-    required = ("finding_id", "reviewer", "severity", "disposition", "message")
+    required = (
+        "finding_id",
+        "reviewer",
+        "review_purpose",
+        "severity",
+        "disposition",
+        "message",
+    )
     missing = [key for key in required if not isinstance(value.get(key), str) or not value[key].strip()]
     if missing:
         raise OrchestrationError(
@@ -50,9 +66,22 @@ def _finding(value: Any, index: int) -> RefereeFinding:
         raise OrchestrationError(f"referee finding {index} has an invalid severity")
     if value["disposition"] not in _FINDING_DISPOSITIONS:
         raise OrchestrationError(f"referee finding {index} has an invalid disposition")
+    if value["review_purpose"] not in _REVIEW_PURPOSES:
+        raise OrchestrationError(f"referee finding {index} has an invalid review purpose")
+    evidence_refs = value.get("evidence_refs")
+    if not isinstance(evidence_refs, list) or not evidence_refs or not all(
+        isinstance(reference, str) and reference.strip() for reference in evidence_refs
+    ):
+        raise OrchestrationError(
+            f"referee finding {index} evidence_refs must be a non-empty list of strings"
+        )
+    if len(evidence_refs) != len(set(evidence_refs)):
+        raise OrchestrationError(f"referee finding {index} evidence_refs must be unique")
     return RefereeFinding(
         finding_id=value["finding_id"],
         reviewer=value["reviewer"],
+        review_purpose=value["review_purpose"],
+        evidence_refs=tuple(evidence_refs),
         severity=value["severity"],
         disposition=value["disposition"],
         message=value["message"],

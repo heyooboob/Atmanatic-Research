@@ -9,6 +9,8 @@ class OrchestrationTests(unittest.TestCase):
             return [{
                 "finding_id": "f-1",
                 "reviewer": "boundary-reviewer",
+                "review_purpose": "boundary_tester",
+                "evidence_refs": ["fixture:scope-boundary"],
                 "severity": "info",
                 "disposition": "resolved",
                 "message": "scope is explicit",
@@ -18,6 +20,9 @@ class OrchestrationTests(unittest.TestCase):
         self.assertTrue(result.accepted)
         self.assertEqual(len(result.rounds), 1)
         self.assertEqual(result.reasons, ())
+        finding = result.rounds[0].findings[0]
+        self.assertEqual(finding.review_purpose, "boundary_tester")
+        self.assertEqual(finding.evidence_refs, ("fixture:scope-boundary",))
 
     def test_unresolved_findings_are_bounded_and_blocking(self):
         calls = []
@@ -27,6 +32,8 @@ class OrchestrationTests(unittest.TestCase):
             return [{
                 "finding_id": "f-1",
                 "reviewer": "red-team",
+                "review_purpose": "falsifier",
+                "evidence_refs": ["counterexample:1"],
                 "severity": "blocker",
                 "disposition": "open",
                 "message": "counterexample remains",
@@ -55,6 +62,8 @@ class OrchestrationTests(unittest.TestCase):
             finding = {
                 "finding_id": "same",
                 "reviewer": "reviewer",
+                "review_purpose": "assumption_auditor",
+                "evidence_refs": ["assumption-log:1"],
                 "severity": "warning",
                 "disposition": "resolved",
                 "message": "checked",
@@ -69,6 +78,8 @@ class OrchestrationTests(unittest.TestCase):
             return [{
                 "finding_id": "f-1",
                 "reviewer": "red-team",
+                "review_purpose": "boundary_tester",
+                "evidence_refs": ["fixture:missing"],
                 "severity": "blocker",
                 "disposition": "open",
                 "message": "boundary remains untested",
@@ -78,6 +89,44 @@ class OrchestrationTests(unittest.TestCase):
         self.assertFalse(result.accepted)
         self.assertEqual(result.reasons, ("reviser made no progress",))
         self.assertEqual(len(result.rounds), 1)
+
+    def test_finding_requires_recognized_review_purpose(self):
+        def reviewer(proposal):
+            return [{
+                "finding_id": "f-1",
+                "reviewer": "general-reviewer",
+                "review_purpose": "general_review",
+                "evidence_refs": ["evidence-1"],
+                "severity": "warning",
+                "disposition": "open",
+                "message": "purpose is not independently defined",
+            }]
+
+        with self.assertRaisesRegex(OrchestrationError, "invalid review purpose"):
+            run_referee_loop({}, [reviewer], lambda proposal, findings: proposal)
+
+    def test_finding_requires_unique_evidence_references(self):
+        def finding(evidence_refs):
+            return {
+                "finding_id": "f-1",
+                "reviewer": "provenance-reviewer",
+                "review_purpose": "provenance_auditor",
+                "evidence_refs": evidence_refs,
+                "severity": "blocker",
+                "disposition": "open",
+                "message": "provenance is incomplete",
+            }
+
+        with self.assertRaisesRegex(OrchestrationError, "non-empty list"):
+            run_referee_loop(
+                {}, [lambda proposal: [finding([])]], lambda proposal, findings: proposal
+            )
+        with self.assertRaisesRegex(OrchestrationError, "must be unique"):
+            run_referee_loop(
+                {},
+                [lambda proposal: [finding(["evidence-1", "evidence-1"])]],
+                lambda proposal, findings: proposal,
+            )
 
 
 if __name__ == "__main__":
