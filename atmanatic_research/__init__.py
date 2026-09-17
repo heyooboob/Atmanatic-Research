@@ -43,6 +43,7 @@ from .artifact_contracts import (
     validate_verification_result,
 )
 from .orchestration import (
+    FindingResponse,
     OrchestrationError,
     OrchestrationResult,
     RefereeFinding,
@@ -111,6 +112,7 @@ __all__ = [
     "validate_review_outcome",
     "validate_verification_result",
     "OrchestrationError",
+    "FindingResponse",
     "OrchestrationResult",
     "RefereeFinding",
     "ReviewRound",

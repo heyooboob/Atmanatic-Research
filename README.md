@@ -101,6 +101,14 @@ list of `evidence_refs` supporting the finding or its resolution. The resulting
 audit code can distinguish reviewer roles and trace each disposition to its
 declared basis.
 
+When findings require a revision, the reviser must return a proposal containing
+`finding_responses`. Every finding ID from that round must appear exactly once;
+each response declares `addressed` or `disputed`, a non-empty explanation, and
+supporting evidence references. Unknown, duplicate, omitted, or malformed
+responses fail closed. `ReviewRound.responses` preserves typed
+`FindingResponse` records. Adding responses without changing the proposal body
+still counts as non-progress and ends the loop without acceptance.
+
 Untrusted proposer output can first pass through
 `validate_proposal_envelope()`. It returns an immutable typed
 `ProposalEnvelope` containing a schema version, proposal and parent identities,

@@ -431,6 +431,12 @@ unique, non-empty evidence references. Malformed purposes or unsupported
 findings fail closed before acceptance, and the typed finding preserves its
 review role and evidentiary basis for downstream audit.
 
+Every revision now includes an evidence-backed `FindingResponse` for each
+finding in the preceding round, including findings already marked resolved.
+Missing, duplicate, or unknown finding responses fail closed. Responses are
+preserved in the round history, and response-only edits do not satisfy the
+loop's substantive progress requirement.
+
 ### Deliverables
 
 - provider-neutral orchestration interface;

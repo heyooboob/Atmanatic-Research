@@ -7,6 +7,7 @@ from typing import Any, Callable, Iterable
 
 _FINDING_SEVERITIES = {"blocker", "warning", "info"}
 _FINDING_DISPOSITIONS = {"open", "resolved"}
+_RESPONSE_DISPOSITIONS = {"addressed", "disputed"}
 _REVIEW_PURPOSES = {
     "falsifier",
     "assumption_auditor",
@@ -32,10 +33,19 @@ class RefereeFinding:
 
 
 @dataclass(frozen=True)
+class FindingResponse:
+    finding_id: str
+    disposition: str
+    response: str
+    evidence_refs: tuple[str, ...]
+
+
+@dataclass(frozen=True)
 class ReviewRound:
     attempt: int
     proposal: dict[str, Any]
     findings: tuple[RefereeFinding, ...]
+    responses: tuple[FindingResponse, ...] = ()
 
 
 @dataclass(frozen=True)
@@ -96,6 +106,63 @@ def _review(findings: Iterable[Any]) -> tuple[RefereeFinding, ...]:
     return values
 
 
+def _finding_response(value: Any, index: int) -> FindingResponse:
+    if not isinstance(value, dict):
+        raise OrchestrationError(f"finding response {index} must be an object")
+    required = ("finding_id", "disposition", "response")
+    missing = [
+        key
+        for key in required
+        if not isinstance(value.get(key), str) or not value[key].strip()
+    ]
+    if missing:
+        raise OrchestrationError(
+            f"finding response {index} is missing non-empty fields: {', '.join(missing)}"
+        )
+    if value["disposition"] not in _RESPONSE_DISPOSITIONS:
+        raise OrchestrationError(f"finding response {index} has an invalid disposition")
+    evidence_refs = value.get("evidence_refs")
+    if not isinstance(evidence_refs, list) or not evidence_refs or not all(
+        isinstance(reference, str) and reference.strip() for reference in evidence_refs
+    ):
+        raise OrchestrationError(
+            f"finding response {index} evidence_refs must be a non-empty list of strings"
+        )
+    if len(evidence_refs) != len(set(evidence_refs)):
+        raise OrchestrationError(f"finding response {index} evidence_refs must be unique")
+    return FindingResponse(
+        finding_id=value["finding_id"],
+        disposition=value["disposition"],
+        response=value["response"],
+        evidence_refs=tuple(evidence_refs),
+    )
+
+
+def _responses(value: Any, findings: tuple[RefereeFinding, ...]) -> tuple[FindingResponse, ...]:
+    if not isinstance(value, list):
+        raise OrchestrationError("revised proposal must include a finding_responses list")
+    responses = tuple(_finding_response(item, index) for index, item in enumerate(value))
+    response_ids = [response.finding_id for response in responses]
+    if len(response_ids) != len(set(response_ids)):
+        raise OrchestrationError("finding response IDs must be unique within a revision")
+    finding_ids = {finding.finding_id for finding in findings}
+    missing = sorted(finding_ids - set(response_ids))
+    extra = sorted(set(response_ids) - finding_ids)
+    if missing:
+        raise OrchestrationError(
+            "revised proposal does not address findings: " + ", ".join(missing)
+        )
+    if extra:
+        raise OrchestrationError(
+            "revised proposal addresses unknown findings: " + ", ".join(extra)
+        )
+    return responses
+
+
+def _proposal_body(proposal: dict[str, Any]) -> dict[str, Any]:
+    return {key: value for key, value in proposal.items() if key != "finding_responses"}
+
+
 def run_referee_loop(
     proposal: dict[str, Any],
     reviewers: Iterable[Callable[[dict[str, Any]], Iterable[dict[str, Any]]]],
@@ -135,10 +202,9 @@ def run_referee_loop(
         finding_ids = [finding.finding_id for finding in reviewed]
         if len(finding_ids) != len(set(finding_ids)):
             raise OrchestrationError("referee finding IDs must be unique within a round")
-        round_record = ReviewRound(attempt=attempt, proposal=dict(current), findings=reviewed)
-        rounds.append(round_record)
         unresolved = tuple(finding for finding in reviewed if finding.disposition != "resolved")
         if not unresolved:
+            rounds.append(ReviewRound(attempt=attempt, proposal=dict(current), findings=reviewed))
             return OrchestrationResult(
                 accepted=True,
                 proposal=dict(current),
@@ -146,6 +212,7 @@ def run_referee_loop(
                 reasons=(),
             )
         if attempt == max_revisions:
+            rounds.append(ReviewRound(attempt=attempt, proposal=dict(current), findings=reviewed))
             reasons = tuple(
                 f"unresolved finding {finding.finding_id}: {finding.message}"
                 for finding in unresolved
@@ -159,7 +226,16 @@ def run_referee_loop(
         revised = reviser(dict(current), reviewed)
         if not isinstance(revised, dict):
             raise OrchestrationError("reviser must return a proposal object")
-        if revised == current:
+        responses = _responses(revised.get("finding_responses"), reviewed)
+        rounds.append(
+            ReviewRound(
+                attempt=attempt,
+                proposal=dict(current),
+                findings=reviewed,
+                responses=responses,
+            )
+        )
+        if _proposal_body(revised) == _proposal_body(current):
             return OrchestrationResult(
                 accepted=False,
                 proposal=dict(current),
