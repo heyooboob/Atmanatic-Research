@@ -153,6 +153,12 @@ proposal snapshot, finding IDs, reviewer identities, and reasons. It always has
 `execution_authorized=False`; the external human workflow owns any subsequent
 decision. Malformed policy output and policy exceptions fail closed.
 
+Non-progress detection covers the complete run, not only adjacent revisions.
+The generic loop rejects a proposal body that equals any earlier state. The
+envelope-aware loop separately rejects a payload that repeats under fresh
+proposal IDs or hashes. This prevents bounded retries from oscillating between
+previously rejected states while appearing to make progress.
+
 For decision-grade evidence, use `validate_and_admit_evidence()` when the
 caller wants one fail-closed entry point. It first applies the complete
 evidence-card contract and then applies freshness, provenance, status, and

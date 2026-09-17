@@ -450,6 +450,11 @@ stop automated revision and produce a typed `EscalationRequest` preserving the
 proposal, findings, reviewers, and reasons. The request is explicitly
 non-authorizing; human workflow and decisions remain external.
 
+Non-progress detection now rejects any revision that repeats a proposal state
+seen earlier in the run. The strict envelope loop applies the same rule to
+payloads independently of changing proposal IDs, timestamps, or declared
+hashes, preventing alternating-state retry cycles.
+
 ### Deliverables
 
 - provider-neutral orchestration interface;

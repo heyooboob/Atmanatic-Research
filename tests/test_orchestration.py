@@ -337,6 +337,36 @@ class OrchestrationTests(unittest.TestCase):
                 escalation_policy=lambda proposal, findings: "escalate",
             )
 
+    def test_reviser_cannot_cycle_to_prior_proposal_state(self):
+        def reviewer(proposal):
+            return [{
+                "finding_id": "f-1",
+                "reviewer": "boundary-reviewer",
+                "review_purpose": "boundary_tester",
+                "evidence_refs": ["fixture:cycle"],
+                "severity": "blocker",
+                "disposition": "open",
+                "message": "revision remains incomplete",
+            }]
+
+        def reviser(proposal, findings):
+            return {
+                "state": "b" if proposal["state"] == "a" else "a",
+                "finding_responses": [{
+                    "finding_id": "f-1",
+                    "disposition": "addressed",
+                    "response": "switched implementation state",
+                    "evidence_refs": ["fixture:cycle"],
+                }],
+            }
+
+        result = run_referee_loop(
+            {"state": "a"}, [reviewer], reviser, max_revisions=3
+        )
+        self.assertFalse(result.accepted)
+        self.assertEqual(result.reasons, ("reviser repeated a prior proposal state",))
+        self.assertEqual(len(result.rounds), 2)
+
 
 class EnvelopedOrchestrationTests(unittest.TestCase):
     def _reviewer(self, proposal):
@@ -447,6 +477,35 @@ class EnvelopedOrchestrationTests(unittest.TestCase):
             result.escalation.reasons,
             ("evidence is insufficient for automated revision",),
         )
+
+    def test_enveloped_loop_rejects_payload_cycle_under_fresh_ids(self):
+        def reviewer(proposal):
+            return [{
+                "finding_id": "f-1",
+                "reviewer": "boundary-reviewer",
+                "review_purpose": "boundary_tester",
+                "evidence_refs": ["fixture:cycle"],
+                "severity": "blocker",
+                "disposition": "open",
+                "message": "revision remains incomplete",
+            }]
+
+        revisions = iter([
+            self._revision(),
+            self._revision(
+                proposal_id="proposal-3",
+                parent_proposal_id="proposal-2",
+                content_hash="c" * 64,
+                payload={"revision": 0},
+            ),
+        ])
+        with self.assertRaisesRegex(OrchestrationError, "repeats a prior state"):
+            run_enveloped_referee_loop(
+                _proposal(),
+                [reviewer],
+                lambda proposal, findings: next(revisions),
+                max_revisions=3,
+            )
 
 
 if __name__ == "__main__":

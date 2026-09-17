@@ -227,6 +227,7 @@ def run_referee_loop(
 
     current = proposal
     rounds: list[ReviewRound] = []
+    seen_proposal_bodies = [_proposal_body(current)]
     for attempt in range(max_revisions + 1):
         findings: list[RefereeFinding] = []
         for reviewer in reviewer_list:
@@ -298,13 +299,22 @@ def run_referee_loop(
                 responses=responses,
             )
         )
-        if _proposal_body(revised) == _proposal_body(current):
+        revised_body = _proposal_body(revised)
+        if revised_body == _proposal_body(current):
             return OrchestrationResult(
                 accepted=False,
                 proposal=dict(current),
                 rounds=tuple(rounds),
                 reasons=("reviser made no progress",),
             )
+        if any(revised_body == prior for prior in seen_proposal_bodies):
+            return OrchestrationResult(
+                accepted=False,
+                proposal=dict(current),
+                rounds=tuple(rounds),
+                reasons=("reviser repeated a prior proposal state",),
+            )
+        seen_proposal_bodies.append(revised_body)
         current = revised
 
     raise AssertionError("bounded referee loop did not terminate")
@@ -336,6 +346,7 @@ def run_enveloped_referee_loop(
     if not callable(reviser):
         raise OrchestrationError("reviser must be callable")
     seen_proposal_ids = {initial.proposal_id}
+    seen_payloads = [dict(initial.payload)]
 
     def wrap_reviewer(
         reviewer: Callable[[ProposalEnvelope], Iterable[dict[str, Any]]],
@@ -366,11 +377,15 @@ def run_enveloped_referee_loop(
             )
         if revised_envelope.proposal_id in seen_proposal_ids:
             raise OrchestrationError("revised proposal_id must be unique within the run")
-        if dict(revised_envelope.payload) == dict(current_envelope.payload):
+        revised_payload = dict(revised_envelope.payload)
+        if revised_payload == dict(current_envelope.payload):
             raise OrchestrationError("revised proposal payload made no substantive progress")
+        if any(revised_payload == prior for prior in seen_payloads):
+            raise OrchestrationError("revised proposal payload repeats a prior state")
         if revised_envelope.content_hash == current_envelope.content_hash:
             raise OrchestrationError("revised proposal content_hash must change with its payload")
         seen_proposal_ids.add(revised_envelope.proposal_id)
+        seen_payloads.append(revised_payload)
         return revised
 
     return run_referee_loop(
