@@ -51,6 +51,27 @@ artifact hash under review, concrete challenge findings, and the disposition.
 A resolved outcome must include its resolution and cannot be authored by the
 same producer as the reviewed artifact.
 
+Use `advance_with_review()` for transitions to `independently_verified` or
+`awaiting_human_promotion`. The packet must declare its SHA-256 content digest
+as `metadata["content_hash"]`, and the validated review artifact's
+`subject_artifact_hash` must match it:
+
+```python
+from atmanatic_research import ValidityLevel, advance_with_review
+
+result = advance_with_review(
+	packet,
+	ValidityLevel.INDEPENDENTLY_VERIFIED,
+	review_record,
+)
+```
+
+Only a `challenged_and_resolved` review can advance the packet. Reviewer and
+challenge fields are derived from the artifact, and a failed transition leaves
+the packet unchanged. The standalone `advance()` remains the low-level validity
+protocol primitive; consumers enforcing Phase 2 governance should use the
+review-backed entry point for review-gated levels.
+
 The provider-neutral `run_referee_loop()` accepts injected proposer/referee
 callables without adding an LLM or workflow dependency. Referee findings must
 be structured, unresolved findings block acceptance, revisions are bounded by

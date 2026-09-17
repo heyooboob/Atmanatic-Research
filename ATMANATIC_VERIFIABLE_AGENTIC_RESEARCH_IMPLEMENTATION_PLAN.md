@@ -354,6 +354,12 @@ admission. Rejection reasons, malformed output, and validator exceptions fail
 closed with the validator name preserved. Atmanatic defines this extension
 contract but does not own domain logic or dependencies.
 
+`advance_with_review()` connects the separate review-outcome artifact to the
+validity ladder. Review-gated advancement requires a structurally valid,
+independent, `challenged_and_resolved` artifact whose subject hash matches the
+packet's declared content hash. Reviewer fields are derived from that artifact,
+and failed transitions do not partially mutate the packet.
+
 ### Deliverables
 
 - evidence-to-claim linkage rules;
@@ -363,6 +369,7 @@ contract but does not own domain logic or dependencies.
 - minimum source-count and source-independence policy;
 - caller-owned domain evidence validator interface;
 - review and challenge artifact schema;
+- hash-linked review-gated validity advancement;
 - adversarial test corpus;
 - rejection taxonomy;
 - examples for research, software engineering, and evaluation workflows.

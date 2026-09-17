@@ -49,6 +49,7 @@ from .orchestration import (
     ReviewRound,
     run_referee_loop,
 )
+from .validity_governance import advance_with_review
 from validity_protocol import (
     Observation,
     PacketStore,
@@ -108,6 +109,7 @@ __all__ = [
     "RefereeFinding",
     "ReviewRound",
     "run_referee_loop",
+    "advance_with_review",
     "Observation",
     "PacketStore",
     "ValidationResult",

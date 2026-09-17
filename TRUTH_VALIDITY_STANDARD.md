@@ -32,6 +32,8 @@ material environment changes require revalidation.
 
 - The claim author cannot be its independent reviewer.
 - A claim must include a falsifier, counterclaim, uncertainty statement, and resolved challenge.
+- Advancement to an independently reviewed level requires a separate resolved
+    review artifact whose subject hash matches the packet content hash.
 - A claim declared measurable must identify its metric, comparison operator,
   threshold, unit, and observation window.
 - Missing, stale, conflicting, or unverifiable evidence blocks readiness.
