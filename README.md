@@ -167,6 +167,15 @@ it detects an overrun after an external callback returns but cannot interrupt a
 blocked model or service call. Consumers must enforce hard per-call timeouts in
 their provider runtime.
 
+`build_orchestration_audit_events()` projects a completed result into an ordered
+tuple of immutable `OrchestrationAuditEvent` records. The caller supplies a
+stable `run_id`; event IDs are derived deterministically as `run_id:sequence`.
+Events record completed reviews, finding responses, acceptance, rejection, or
+human escalation and always retain `execution_authorized=False`. The projection
+contains no generated timestamps or random identifiers, so replaying the same
+result and run ID produces the same event stream. Durable append-only storage,
+signatures, clocks, and delivery ordering remain consumer responsibilities.
+
 For decision-grade evidence, use `validate_and_admit_evidence()` when the
 caller wants one fail-closed entry point. It first applies the complete
 evidence-card contract and then applies freshness, provenance, status, and

@@ -59,6 +59,10 @@ from .proposal_contracts import (
     ProposalEnvelope,
     validate_proposal_envelope,
 )
+from .orchestration_audit import (
+    OrchestrationAuditEvent,
+    build_orchestration_audit_events,
+)
 from validity_protocol import (
     Observation,
     PacketStore,
@@ -126,6 +130,8 @@ __all__ = [
     "ProposalContractError",
     "ProposalEnvelope",
     "validate_proposal_envelope",
+    "OrchestrationAuditEvent",
+    "build_orchestration_audit_events",
     "Observation",
     "PacketStore",
     "ValidationResult",

@@ -461,6 +461,12 @@ accepted proposal state. The package cannot interrupt a blocked external call;
 hard callback deadlines and cancellation remain responsibilities of the
 provider runtime or workflow engine.
 
+`build_orchestration_audit_events()` deterministically projects completed run
+results into ordered review, response, terminal, and escalation events. Stable
+event IDs derive from a caller-owned run ID and sequence number; no random ID or
+clock affects replay. Events remain non-authorizing. Durable storage,
+signatures, and transport ordering are external responsibilities.
+
 ### Deliverables
 
 - provider-neutral orchestration interface;
