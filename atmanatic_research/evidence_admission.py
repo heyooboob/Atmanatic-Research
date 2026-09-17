@@ -7,6 +7,7 @@ from datetime import datetime, timezone
 from typing import Any
 
 from .evidence_contracts import validate_evidence_card
+from .source_policy import assert_source_allowed, validate_acquisition_receipt
 
 BLOCKED_STATUSES = {"stale_source", "conflict", "insufficient_independent_sources"}
 
@@ -72,6 +73,60 @@ def validate_and_admit_evidence(
     for card in cards:
         validate_evidence_card(card)
     return require_decision_evidence(cards, now=now)
+
+
+def validate_and_admit_governed_evidence(
+    cards: list[dict[str, Any]],
+    registry: dict[str, Any],
+    *,
+    minimum_tier: str | None = None,
+    request_contexts: dict[str, dict[str, Any]] | None = None,
+    acquisition_receipts: list[dict[str, Any]] | None = None,
+    now: datetime | None = None,
+) -> list[dict[str, Any]]:
+    """Apply source policy and acquisition provenance before evidence admission."""
+    if request_contexts is not None and not isinstance(request_contexts, dict):
+        raise ValueError("Governed evidence blocked: request_contexts must be an object")
+    if acquisition_receipts is not None and not isinstance(acquisition_receipts, list):
+        raise ValueError("Governed evidence blocked: acquisition_receipts must be a list")
+    contexts = request_contexts or {}
+    receipts = acquisition_receipts or []
+    for card in cards:
+        agent = card.get("agent") if isinstance(card, dict) else None
+        source_ids = card.get("source_ids") if isinstance(card, dict) else None
+        if not isinstance(agent, str) or not agent.strip():
+            raise ValueError("Governed evidence blocked: card has no valid agent")
+        if not isinstance(source_ids, list) or not source_ids or not all(
+            isinstance(source_id, str) and source_id.strip() for source_id in source_ids
+        ):
+            raise ValueError("Governed evidence blocked: card has no valid source references")
+
+        for source_id in source_ids:
+            source = assert_source_allowed(
+                registry,
+                source_id,
+                agent,
+                minimum_tier=minimum_tier,
+                request_context=contexts.get(source_id),
+            )
+            access = source.get("access") or {}
+            if access.get("mode") != "public_identified":
+                continue
+            matching_receipts = [
+                receipt
+                for receipt in receipts
+                if isinstance(receipt, dict)
+                and receipt.get("source_id") == source_id
+                and receipt.get("response_content_hash") == card.get("content_hash")
+            ]
+            if not matching_receipts:
+                raise ValueError(
+                    f"Governed evidence blocked: source '{source_id}' requires an acquisition receipt matching the card content hash"
+                )
+            for receipt in matching_receipts:
+                validate_acquisition_receipt(receipt, source=source)
+
+    return validate_and_admit_evidence(cards, now=now)
 
 
 def require_claim_evidence(

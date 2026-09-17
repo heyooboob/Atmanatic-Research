@@ -18,6 +18,7 @@ from .evidence_admission import (
     require_decision_evidence,
     require_claim_evidence,
     validate_and_admit_evidence,
+    validate_and_admit_governed_evidence,
 )
 from .text_processing import explain_match, extract_ngrams, normalize_text, process_text, tokenize
 from .source_policy import (
@@ -76,6 +77,7 @@ __all__ = [
     "require_decision_evidence",
     "require_claim_evidence",
     "validate_and_admit_evidence",
+    "validate_and_admit_governed_evidence",
     "explain_match",
     "extract_ngrams",
     "normalize_text",

@@ -66,6 +66,35 @@ Use `require_claim_evidence()` when a claim must be tied to those admitted
 cards. It rejects duplicate or conflicting evidence identifiers and rejects
 claim source references that are not present in the admitted evidence set.
 
+Use `validate_and_admit_governed_evidence()` when evidence must also pass the
+institutional source registry before admission. It checks that every source is
+enabled, permitted for the card's agent, and meets the requested authority
+tier. Identified public sources additionally require a compliant request
+context and an acquisition receipt whose source and response hash match the
+evidence card:
+
+```python
+from atmanatic_research import validate_and_admit_governed_evidence
+
+validate_and_admit_governed_evidence(
+	[cards[0]],
+	registry,
+	minimum_tier="A",
+	request_contexts={
+		"sec-edgar": {
+			"identity_profile_id": "institutional-contact",
+			"headers_present": ["User-Agent"],
+		},
+	},
+	acquisition_receipts=[receipt],
+)
+```
+
+Request contexts are keyed by source ID. Receipts are a list so separate
+retrievals from the same source can be linked by response content hash. The
+function returns the original cards only after source governance, complete
+card validation, and decision-grade admission all succeed.
+
 ## Identified public sources
 
 Public sources that require request identification can declare that policy

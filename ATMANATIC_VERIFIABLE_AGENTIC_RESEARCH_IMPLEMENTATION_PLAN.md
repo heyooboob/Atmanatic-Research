@@ -333,6 +333,14 @@ generic validator.
 `validate_and_admit_evidence()` is the fail-closed public path that validates
 complete evidence-card structure before admission.
 
+`validate_and_admit_governed_evidence()` is the source-policy integration
+adapter. It requires every card source to be enabled, permitted for the card's
+agent, and compliant with the requested authority tier before final structural
+validation and admission. For identified public sources, it also requires
+declared request metadata and a policy-matching acquisition receipt linked to
+the card's content hash. The receipt remains a caller attestation rather than
+independent proof of the transmitted request.
+
 ### Deliverables
 
 - evidence-to-claim linkage rules;
