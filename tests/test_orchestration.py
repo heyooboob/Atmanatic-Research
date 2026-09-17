@@ -266,6 +266,77 @@ class OrchestrationTests(unittest.TestCase):
         with self.assertRaisesRegex(OrchestrationError, "non-empty list"):
             run_referee_loop({}, [reviewer], reviser)
 
+    def test_reviewer_disagreement_creates_human_escalation(self):
+        reviser_called = False
+
+        def resolved_reviewer(proposal):
+            return [{
+                "finding_id": "resolved-1",
+                "reviewer": "assumption-reviewer",
+                "review_purpose": "assumption_auditor",
+                "evidence_refs": ["analysis:assumptions"],
+                "severity": "info",
+                "disposition": "resolved",
+                "message": "assumptions are bounded",
+            }]
+
+        def blocking_reviewer(proposal):
+            return [{
+                "finding_id": "open-1",
+                "reviewer": "boundary-reviewer",
+                "review_purpose": "boundary_tester",
+                "evidence_refs": ["fixture:boundary"],
+                "severity": "blocker",
+                "disposition": "open",
+                "message": "boundary remains untested",
+            }]
+
+        def escalation_policy(proposal, findings):
+            dispositions = {finding.disposition for finding in findings}
+            return ["reviewers disagree on readiness"] if len(dispositions) > 1 else []
+
+        def reviser(proposal, findings):
+            nonlocal reviser_called
+            reviser_called = True
+            return proposal
+
+        result = run_referee_loop(
+            {"proposal_id": "proposal-1"},
+            [resolved_reviewer, blocking_reviewer],
+            reviser,
+            escalation_policy=escalation_policy,
+        )
+        self.assertFalse(result.accepted)
+        self.assertFalse(reviser_called)
+        self.assertIsNotNone(result.escalation)
+        self.assertEqual(result.escalation.status, "awaiting_human_review")
+        self.assertFalse(result.escalation.execution_authorized)
+        self.assertEqual(result.escalation.finding_ids, ("resolved-1", "open-1"))
+        self.assertEqual(
+            result.escalation.reviewers,
+            ("assumption-reviewer", "boundary-reviewer"),
+        )
+
+    def test_malformed_escalation_policy_fails_closed(self):
+        def reviewer(proposal):
+            return [{
+                "finding_id": "f-1",
+                "reviewer": "reviewer",
+                "review_purpose": "falsifier",
+                "evidence_refs": ["counterexample:1"],
+                "severity": "blocker",
+                "disposition": "open",
+                "message": "counterexample remains",
+            }]
+
+        with self.assertRaisesRegex(OrchestrationError, "must return an iterable"):
+            run_referee_loop(
+                {},
+                [reviewer],
+                lambda proposal, findings: proposal,
+                escalation_policy=lambda proposal, findings: "escalate",
+            )
+
 
 class EnvelopedOrchestrationTests(unittest.TestCase):
     def _reviewer(self, proposal):
@@ -360,6 +431,22 @@ class EnvelopedOrchestrationTests(unittest.TestCase):
                 [self._reviewer],
                 lambda proposal, findings: self._revision(),
             )
+
+    def test_enveloped_loop_forwards_insufficient_evidence_escalation(self):
+        result = run_enveloped_referee_loop(
+            _proposal(),
+            [self._reviewer],
+            lambda proposal, findings: self._revision(),
+            escalation_policy=lambda proposal, findings: [
+                "evidence is insufficient for automated revision"
+            ],
+        )
+        self.assertFalse(result.accepted)
+        self.assertEqual(result.proposal["proposal_id"], "proposal-1")
+        self.assertEqual(
+            result.escalation.reasons,
+            ("evidence is insufficient for automated revision",),
+        )
 
 
 if __name__ == "__main__":

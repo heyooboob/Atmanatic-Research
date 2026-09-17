@@ -145,6 +145,14 @@ and include the required finding responses. Proposal IDs cannot be reused
 within a run. The returned rounds retain each full proposal and its finding IDs,
 providing a replayable proposal-to-critique-to-revision chain.
 
+Both referee loops accept an optional caller-owned `escalation_policy`. It
+receives the current proposal and typed findings after each review round and
+returns escalation reasons when automated revision should stop. A non-empty
+result produces an `EscalationRequest` with status `awaiting_human_review`, the
+proposal snapshot, finding IDs, reviewer identities, and reasons. It always has
+`execution_authorized=False`; the external human workflow owns any subsequent
+decision. Malformed policy output and policy exceptions fail closed.
+
 For decision-grade evidence, use `validate_and_admit_evidence()` when the
 caller wants one fail-closed entry point. It first applies the complete
 evidence-card contract and then applies freshness, provenance, status, and

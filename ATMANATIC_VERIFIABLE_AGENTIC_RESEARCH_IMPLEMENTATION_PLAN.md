@@ -444,6 +444,12 @@ and responses in round history. This establishes the proposal, critique, and
 revision identity chain; verification-result identifiers remain in their
 separate artifact envelopes.
 
+Both referee loops accept a caller-owned escalation policy. Reviewer
+disagreement, insufficient evidence, or other caller-defined conditions can
+stop automated revision and produce a typed `EscalationRequest` preserving the
+proposal, findings, reviewers, and reasons. The request is explicitly
+non-authorizing; human workflow and decisions remain external.
+
 ### Deliverables
 
 - provider-neutral orchestration interface;

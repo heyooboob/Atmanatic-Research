@@ -51,11 +51,22 @@ class ReviewRound:
 
 
 @dataclass(frozen=True)
+class EscalationRequest:
+    status: str
+    reasons: tuple[str, ...]
+    finding_ids: tuple[str, ...]
+    reviewers: tuple[str, ...]
+    proposal: dict[str, Any]
+    execution_authorized: bool = False
+
+
+@dataclass(frozen=True)
 class OrchestrationResult:
     accepted: bool
     proposal: dict[str, Any]
     rounds: tuple[ReviewRound, ...]
     reasons: tuple[str, ...]
+    escalation: EscalationRequest | None = None
 
 
 def _finding(value: Any, index: int) -> RefereeFinding:
@@ -165,12 +176,35 @@ def _proposal_body(proposal: dict[str, Any]) -> dict[str, Any]:
     return {key: value for key, value in proposal.items() if key != "finding_responses"}
 
 
+def _escalation_reasons(
+    policy: Callable[[dict[str, Any], tuple[RefereeFinding, ...]], Iterable[str] | None],
+    proposal: dict[str, Any],
+    findings: tuple[RefereeFinding, ...],
+) -> tuple[str, ...]:
+    try:
+        value = policy(dict(proposal), findings)
+        if value is None:
+            return ()
+        if isinstance(value, (str, bytes)):
+            raise TypeError("must return an iterable of reasons")
+        reasons = tuple(value)
+    except Exception as error:
+        raise OrchestrationError(f"escalation policy failed: {error}") from error
+    if not all(isinstance(reason, str) and reason.strip() for reason in reasons):
+        raise OrchestrationError("escalation policy returned an invalid reason")
+    return reasons
+
+
 def run_referee_loop(
     proposal: dict[str, Any],
     reviewers: Iterable[Callable[[dict[str, Any]], Iterable[dict[str, Any]]]],
     reviser: Callable[[dict[str, Any], tuple[RefereeFinding, ...]], dict[str, Any]],
     *,
     max_revisions: int = 3,
+    escalation_policy: Callable[
+        [dict[str, Any], tuple[RefereeFinding, ...]], Iterable[str] | None
+    ]
+    | None = None,
 ) -> OrchestrationResult:
     """Review and revise a proposal with bounded, fail-closed retries.
 
@@ -188,6 +222,8 @@ def run_referee_loop(
         raise OrchestrationError("at least one reviewer is required")
     if not callable(reviser):
         raise OrchestrationError("reviser must be callable")
+    if escalation_policy is not None and not callable(escalation_policy):
+        raise OrchestrationError("escalation_policy must be callable")
 
     current = proposal
     rounds: list[ReviewRound] = []
@@ -204,6 +240,31 @@ def run_referee_loop(
         finding_ids = [finding.finding_id for finding in reviewed]
         if len(finding_ids) != len(set(finding_ids)):
             raise OrchestrationError("referee finding IDs must be unique within a round")
+        if escalation_policy is not None:
+            escalation_reasons = _escalation_reasons(
+                escalation_policy, current, reviewed
+            )
+            if escalation_reasons:
+                rounds.append(
+                    ReviewRound(attempt=attempt, proposal=dict(current), findings=reviewed)
+                )
+                escalation = EscalationRequest(
+                    status="awaiting_human_review",
+                    reasons=escalation_reasons,
+                    finding_ids=tuple(finding_ids),
+                    reviewers=tuple(sorted({finding.reviewer for finding in reviewed})),
+                    proposal=dict(current),
+                )
+                return OrchestrationResult(
+                    accepted=False,
+                    proposal=dict(current),
+                    rounds=tuple(rounds),
+                    reasons=tuple(
+                        f"human escalation required: {reason}"
+                        for reason in escalation_reasons
+                    ),
+                    escalation=escalation,
+                )
         unresolved = tuple(finding for finding in reviewed if finding.disposition != "resolved")
         if not unresolved:
             rounds.append(ReviewRound(attempt=attempt, proposal=dict(current), findings=reviewed))
@@ -257,6 +318,10 @@ def run_enveloped_referee_loop(
     ],
     *,
     max_revisions: int = 3,
+    escalation_policy: Callable[
+        [dict[str, Any], tuple[RefereeFinding, ...]], Iterable[str] | None
+    ]
+    | None = None,
 ) -> OrchestrationResult:
     """Run the referee loop with strict proposal identity and revision lineage."""
     try:
@@ -313,4 +378,5 @@ def run_enveloped_referee_loop(
         tuple(wrap_reviewer(reviewer) for reviewer in reviewer_list),
         revise,
         max_revisions=max_revisions,
+        escalation_policy=escalation_policy,
     )
