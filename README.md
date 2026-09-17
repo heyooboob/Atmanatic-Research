@@ -2,6 +2,21 @@
 
 This is the standalone Atmanatic research project.
 
+## Atmanatic Protocol 0.1
+
+The project's immediate standards-track milestone is
+[Atmanatic Protocol 0.1](ATMANATIC_PROTOCOL_0.1_DRAFT.md), a vendor-neutral
+working draft for exchanging verifiable claims, evidence, and review outcomes
+between humans, AI agents, and software systems.
+
+The protocol is broader than this Python package and narrower than an AI
+platform. It defines portable artifacts, validation semantics, review linkage,
+and bounded validity transitions. It does not define model providers,
+orchestration, storage, transport, or execution authority. The draft also
+identifies the schemas, canonical serialization, security, conformance,
+independent implementations, and open governance still required before the
+work can credibly seek recognition as an official standard.
+
 Atmanatic owns domain-neutral research contracts, evidence and provenance
 structures, validity packets, falsification and review rules, source-policy
 evaluation, and deterministic research transformations.
@@ -77,6 +92,34 @@ callables without adding an LLM or workflow dependency. Referee findings must
 be structured, unresolved findings block acceptance, revisions are bounded by
 `max_revisions`, unchanged revisions are rejected as non-progress, and
 malformed reviewer output fails closed.
+
+Untrusted proposer output can first pass through
+`validate_proposal_envelope()`. It returns an immutable typed
+`ProposalEnvelope` containing a schema version, proposal and parent identities,
+producer, timestamp, SHA-256 content digest, evidence references, tool versions,
+payload, and explicit non-authority:
+
+```python
+from atmanatic_research import validate_proposal_envelope
+
+proposal = validate_proposal_envelope({
+	"schema_version": 1,
+	"proposal_id": "proposal-1",
+	"parent_proposal_id": None,
+	"producer": "research-agent",
+	"created_at": "2026-09-17T12:00:00Z",
+	"content_hash": "a" * 64,
+	"evidence_refs": ["evidence-1"],
+	"tool_versions": {"research-agent": "1.2.0"},
+	"payload": {"claim": "The bounded fixture passed."},
+	"execution_authorized": False,
+})
+```
+
+The envelope validates declared lineage and replay metadata; it does not
+recompute the payload hash or establish that cited evidence supports the
+proposal. Those checks belong to deterministic tooling and governed evidence
+admission.
 
 For decision-grade evidence, use `validate_and_admit_evidence()` when the
 caller wants one fail-closed entry point. It first applies the complete

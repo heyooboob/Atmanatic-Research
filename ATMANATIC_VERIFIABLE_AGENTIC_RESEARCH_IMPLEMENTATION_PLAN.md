@@ -5,6 +5,7 @@
 **Owner:** Atmanatic Research Institution  
 **Primary consumers:** independent research consumers  
 **Baseline package:** `atmanatic-research` 0.1.0
+**Immediate milestone:** [Atmanatic Protocol 0.1](ATMANATIC_PROTOCOL_0.1_DRAFT.md)
 
 ## 1. Purpose
 
@@ -418,10 +419,17 @@ malformed, or missing statuses as failures. Retry limits and time budgets are
 necessary to prevent an agent from endlessly rewriting a claim until a reviewer
 happens to accept it.
 
+`validate_proposal_envelope()` now parses untrusted proposer output into an
+immutable `ProposalEnvelope`. The contract requires versioned proposal and
+parent identities, producer and timestamp, a SHA-256 content digest, unique
+evidence references, non-empty tool versions and payload, and explicit
+non-authority. Provider invocation and independent hash recomputation remain
+outside the package.
+
 ### Deliverables
 
 - provider-neutral orchestration interface;
-- proposer and referee result schemas;
+- typed proposer envelope and referee result schemas;
 - bounded retry and escalation policy;
 - audit event model;
 - integration tests using deterministic fake agents;
@@ -739,19 +747,26 @@ The program is complete only when all of the following are true:
 
 ## 15. Initial implementation sequence
 
-The recommended first delivery slice is deliberately small:
+The first delivery slice is the vendor-neutral Protocol 0.1 milestone:
 
-1. Freeze the 0.1.0 baseline and document current limitations.
-2. Add schemas and fixtures for verification results and lineage.
-3. Build a deterministic fake proposer/referee harness.
-4. Add differential and adversarial tests around evidence and validity gates.
-5. Integrate the released wheel into an external consumer with the source tree absent.
-6. Add one sandboxed deterministic verifier for a narrow invariant.
-7. Record the result in a validity packet and require independent review.
-8. Publish a signed candidate only after all gates pass.
+1. Review the working draft against every public validator and test.
+2. Resolve the typed validity packet's common-envelope migration.
+3. Publish normative JSON Schemas and positive, negative, boundary, and
+   adversarial fixtures.
+4. Select a canonical JSON representation and define content-hash projection.
+5. Add stable machine-readable error codes and conformance-result artifacts.
+6. Add immutable transition, expiry, revalidation, and revocation events.
+7. Build a second implementation in an independent codebase and preferably a
+   different programming language.
+8. Run bidirectional interoperability tests and publish their complete results.
+9. Establish open contribution, intellectual-property, security disclosure,
+   registry, and succession policies.
+10. Seek multi-party deployment evidence and early standards-body review.
 
-This sequence produces useful evidence early without turning Atmanatic into an
-LLM orchestrator, execution engine, or self-authorizing system.
+The deterministic proposer/referee harness, verifier adapters, benchmarks,
+consumer integration, and signed package releases continue as reference
+implementation work. They support protocol evidence but do not define the
+protocol or make it an official standard by themselves.
 
 ## 16. Explicit non-goals
 

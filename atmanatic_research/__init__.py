@@ -50,6 +50,12 @@ from .orchestration import (
     run_referee_loop,
 )
 from .validity_governance import advance_with_review
+from .proposal_contracts import (
+    PROPOSAL_SCHEMA_VERSION,
+    ProposalContractError,
+    ProposalEnvelope,
+    validate_proposal_envelope,
+)
 from validity_protocol import (
     Observation,
     PacketStore,
@@ -110,6 +116,10 @@ __all__ = [
     "ReviewRound",
     "run_referee_loop",
     "advance_with_review",
+    "PROPOSAL_SCHEMA_VERSION",
+    "ProposalContractError",
+    "ProposalEnvelope",
+    "validate_proposal_envelope",
     "Observation",
     "PacketStore",
     "ValidationResult",
