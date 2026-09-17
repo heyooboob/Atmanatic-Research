@@ -341,12 +341,19 @@ declared request metadata and a policy-matching acquisition receipt linked to
 the card's content hash. The receipt remains a caller attestation rather than
 independent proof of the transmitted request.
 
+Per-agent `minimum_evidence` policy now enforces distinct source counts,
+independently controlled source groups, and minimum authority tiers. Sources
+declare an `independence_group`; when multiple independent sources are
+required, missing group metadata fails closed. Runtime callers may strengthen
+the minimum tier but cannot weaken institutional policy.
+
 ### Deliverables
 
 - evidence-to-claim linkage rules;
 - source-policy integration adapter;
 - identified-public-source policy and acquisition-receipt contracts;
 - qualitative and measurable falsifier contracts;
+- minimum source-count and source-independence policy;
 - review and challenge artifact schema;
 - adversarial test corpus;
 - rejection taxonomy;

@@ -156,7 +156,21 @@ def assert_source_allowed(
 
 
 def evidence_requirement(registry: dict[str, Any], agent: str) -> dict[str, Any]:
-    requirement = registry.get("minimum_evidence", {}).get(agent)
+    policies = registry.get("minimum_evidence", {})
+    if not isinstance(policies, dict):
+        raise SourcePolicyError("minimum_evidence must be an object")
+    requirement = policies.get(agent)
     if not requirement:
         raise SourcePolicyError(f"No evidence policy configured for agent '{agent}'")
+    if not isinstance(requirement, dict):
+        raise SourcePolicyError(f"Evidence policy for agent '{agent}' must be an object")
+    for field in ("minimum_sources", "minimum_independent_sources"):
+        value = requirement.get(field, 1)
+        if not isinstance(value, int) or isinstance(value, bool) or value <= 0:
+            raise SourcePolicyError(f"Evidence policy {field} must be a positive integer")
+    minimum_tier = requirement.get("minimum_tier")
+    if minimum_tier is not None and (
+        not isinstance(minimum_tier, str) or minimum_tier.upper() not in TIER_RANK
+    ):
+        raise SourcePolicyError("Evidence policy minimum_tier must be A, B, C, or D")
     return requirement

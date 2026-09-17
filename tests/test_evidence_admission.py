@@ -64,6 +64,18 @@ class EvidenceAdmissionTests(unittest.TestCase):
         receipt.update(overrides)
         return receipt
 
+    def _anonymous_source(self, source_id, independence_group, **overrides):
+        source = {
+            "source_id": source_id,
+            "authority_tier": "A",
+            "independence_group": independence_group,
+            "enabled": True,
+            "allowed_for": ["research-agent"],
+            "access": {"policy_version": "1", "mode": "public_anonymous"},
+        }
+        source.update(overrides)
+        return source
+
     def test_duplicate_and_conflicting_evidence_ids_block_admission(self):
         duplicate = admit_evidence([self._complete_card(), self._complete_card()])
         self.assertFalse(duplicate.admitted)
@@ -199,6 +211,72 @@ class EvidenceAdmissionTests(unittest.TestCase):
             validate_and_admit_governed_evidence(
                 [self._complete_card(status="stale_source")],
                 {"sources": [source]},
+            )
+
+    def test_governed_admission_enforces_distinct_independent_sources(self):
+        cards = [self._complete_card(source_ids=["source-1", "source-2"])]
+        policy = {
+            "research-agent": {
+                "minimum_sources": 2,
+                "minimum_independent_sources": 2,
+                "minimum_tier": "B",
+            },
+        }
+        registry = {
+            "sources": [
+                self._anonymous_source("source-1", "publisher-a"),
+                self._anonymous_source("source-2", "publisher-b"),
+            ],
+            "minimum_evidence": policy,
+        }
+        self.assertIs(
+            validate_and_admit_governed_evidence(
+                cards, registry, now=datetime(2026, 1, 2, tzinfo=timezone.utc)
+            ),
+            cards,
+        )
+
+        registry["sources"][1]["independence_group"] = "publisher-a"
+        with self.assertRaisesRegex(ValueError, "independent source groups"):
+            validate_and_admit_governed_evidence(cards, registry)
+
+    def test_governed_admission_rejects_missing_independence_metadata(self):
+        registry = {
+            "sources": [
+                self._anonymous_source("source-1", "publisher-a"),
+                self._anonymous_source("source-2", ""),
+            ],
+            "minimum_evidence": {
+                "research-agent": {
+                    "minimum_sources": 2,
+                    "minimum_independent_sources": 2,
+                },
+            },
+        }
+        with self.assertRaisesRegex(ValueError, "missing independence_group: source-2"):
+            validate_and_admit_governed_evidence(
+                [self._complete_card(source_ids=["source-1", "source-2"])], registry
+            )
+
+    def test_governed_admission_enforces_policy_source_count_and_tier(self):
+        policy = {
+            "research-agent": {
+                "minimum_sources": 2,
+                "minimum_independent_sources": 1,
+                "minimum_tier": "A",
+            },
+        }
+        registry = {
+            "sources": [self._anonymous_source("source-1", "publisher-a")],
+            "minimum_evidence": policy,
+        }
+        with self.assertRaisesRegex(ValueError, "at least 2 distinct sources"):
+            validate_and_admit_governed_evidence([self._complete_card()], registry)
+
+        registry["sources"][0]["authority_tier"] = "B"
+        with self.assertRaisesRegex(SourcePolicyError, "minimum tier 'A'"):
+            validate_and_admit_governed_evidence(
+                [self._complete_card()], registry, minimum_tier="B"
             )
 
 

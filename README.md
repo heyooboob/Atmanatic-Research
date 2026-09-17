@@ -95,6 +95,27 @@ retrievals from the same source can be linked by response content hash. The
 function returns the original cards only after source governance, complete
 card validation, and decision-grade admission all succeed.
 
+Registries may also define per-agent evidence requirements:
+
+```python
+registry["minimum_evidence"] = {
+	"research-agent": {
+		"minimum_sources": 2,
+		"minimum_independent_sources": 2,
+		"minimum_tier": "B",
+	},
+}
+registry["sources"][0]["independence_group"] = "publisher-a"
+registry["sources"][1]["independence_group"] = "publisher-b"
+```
+
+`minimum_sources` counts distinct source IDs. `minimum_independent_sources`
+counts distinct `independence_group` values, representing independently
+controlled publishers, custodians, or collection systems rather than merely
+different URLs. When more than one independent source is required, every
+contributing source must declare its group. A caller may request a stricter
+authority tier but cannot weaken the registry's `minimum_tier`.
+
 ## Identified public sources
 
 Public sources that require request identification can declare that policy

@@ -7,7 +7,13 @@ from datetime import datetime, timezone
 from typing import Any
 
 from .evidence_contracts import validate_evidence_card
-from .source_policy import assert_source_allowed, validate_acquisition_receipt
+from .source_policy import (
+    TIER_RANK,
+    SourcePolicyError,
+    assert_source_allowed,
+    evidence_requirement,
+    validate_acquisition_receipt,
+)
 
 BLOCKED_STATUSES = {"stale_source", "conflict", "insufficient_independent_sources"}
 
@@ -91,6 +97,10 @@ def validate_and_admit_governed_evidence(
         raise ValueError("Governed evidence blocked: acquisition_receipts must be a list")
     contexts = request_contexts or {}
     receipts = acquisition_receipts or []
+    policies = registry.get("minimum_evidence", {})
+    if not isinstance(policies, dict):
+        raise SourcePolicyError("minimum_evidence must be an object")
+    sources_by_agent: dict[str, dict[str, dict[str, Any]]] = {}
     for card in cards:
         agent = card.get("agent") if isinstance(card, dict) else None
         source_ids = card.get("source_ids") if isinstance(card, dict) else None
@@ -102,13 +112,24 @@ def validate_and_admit_governed_evidence(
             raise ValueError("Governed evidence blocked: card has no valid source references")
 
         for source_id in source_ids:
+            requirement = None
+            if agent in policies:
+                requirement = evidence_requirement(registry, agent)
+            required_tier = (requirement or {}).get("minimum_tier")
+            if minimum_tier:
+                caller_tier = minimum_tier.upper()
+                if caller_tier not in TIER_RANK:
+                    raise SourcePolicyError(f"Unknown source tier: {minimum_tier}")
+                if required_tier is None or TIER_RANK[caller_tier] > TIER_RANK[required_tier.upper()]:
+                    required_tier = caller_tier
             source = assert_source_allowed(
                 registry,
                 source_id,
                 agent,
-                minimum_tier=minimum_tier,
+                minimum_tier=required_tier,
                 request_context=contexts.get(source_id),
             )
+            sources_by_agent.setdefault(agent, {})[source_id] = source
             access = source.get("access") or {}
             if access.get("mode") != "public_identified":
                 continue
@@ -125,6 +146,38 @@ def validate_and_admit_governed_evidence(
                 )
             for receipt in matching_receipts:
                 validate_acquisition_receipt(receipt, source=source)
+
+    for agent, sources in sources_by_agent.items():
+        if agent not in policies:
+            continue
+        requirement = evidence_requirement(registry, agent)
+        minimum_sources = requirement.get("minimum_sources", 1)
+        if len(sources) < minimum_sources:
+            raise ValueError(
+                f"Governed evidence blocked: agent '{agent}' requires at least {minimum_sources} distinct sources"
+            )
+        minimum_independent = requirement.get("minimum_independent_sources", 1)
+        missing_groups = [
+            source_id
+            for source_id, source in sources.items()
+            if not isinstance(source.get("independence_group"), str)
+            or not source["independence_group"].strip()
+        ]
+        if minimum_independent > 1 and missing_groups:
+            raise ValueError(
+                "Governed evidence blocked: sources are missing independence_group: "
+                + ", ".join(sorted(missing_groups))
+            )
+        groups = {
+            source.get("independence_group")
+            for source in sources.values()
+            if isinstance(source.get("independence_group"), str)
+            and source["independence_group"].strip()
+        }
+        if minimum_independent > 1 and len(groups) < minimum_independent:
+            raise ValueError(
+                f"Governed evidence blocked: agent '{agent}' requires at least {minimum_independent} independent source groups"
+            )
 
     return validate_and_admit_evidence(cards, now=now)
 

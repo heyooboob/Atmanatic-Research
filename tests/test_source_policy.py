@@ -4,6 +4,7 @@ from atmanatic_research import (
     SourcePolicyError,
     assert_request_compliant,
     assert_source_allowed,
+    evidence_requirement,
     validate_acquisition_receipt,
     validate_source_definition,
 )
@@ -126,6 +127,27 @@ class SourcePolicyTests(unittest.TestCase):
         receipt["retrieved_at"] = "2026-09-17T12:00:00Z"
         with self.assertRaisesRegex(SourcePolicyError, "requirements were satisfied"):
             validate_acquisition_receipt(receipt)
+
+    def test_evidence_requirement_validates_independence_policy(self):
+        registry = {
+            "minimum_evidence": {
+                "research-agent": {
+                    "minimum_sources": 2,
+                    "minimum_independent_sources": 2,
+                    "minimum_tier": "B",
+                },
+            },
+        }
+        self.assertEqual(
+            evidence_requirement(registry, "research-agent")["minimum_tier"], "B"
+        )
+
+        registry["minimum_evidence"]["research-agent"]["minimum_sources"] = 0
+        with self.assertRaisesRegex(SourcePolicyError, "positive integer"):
+            evidence_requirement(registry, "research-agent")
+
+        with self.assertRaisesRegex(SourcePolicyError, "minimum_evidence must be an object"):
+            evidence_requirement({"minimum_evidence": []}, "research-agent")
 
 
 if __name__ == "__main__":
