@@ -479,12 +479,16 @@ messages MAY change without a protocol version change.
 
 The reference implementation defines this registry in
 `atmanatic_research/error_codes.py` as the `ERROR_CODES` frozenset, with a
-shared `ContractError` base exception carrying a `.code` attribute.
-`ArtifactContractError`, `ProposalContractError`, `EvidenceContractError`, and
-`SourcePolicyError` all raise with an explicit code from this registry. The
-validity-transition `ValidationResult` violation list does not yet carry
-structured codes; that remains open work tracked in the master implementation
-roadmap.
+shared `ContractError` base exception carrying a `.code` attribute. Every
+public validator exception now derives from it and raises with an explicit
+code: `ArtifactContractError`, `ProposalContractError`, `EvidenceContractError`,
+`SourcePolicyError`, `OrchestrationError`, `IntelligenceContractError`,
+`TruthReviewError`, `ValidityStandardError`, `EvidenceAdmissionError`,
+`GraphAnalysisError`, and `LifecycleEventError`. The validity-transition
+`ValidationResult` violation list (in `validity_protocol.validator`) does not
+yet carry structured codes, since it aggregates string reasons rather than
+raising typed exceptions; that remains open work tracked in the master
+implementation roadmap.
 
 ## 12. Security considerations
 

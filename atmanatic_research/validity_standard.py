@@ -7,6 +7,8 @@ from dataclasses import dataclass
 from datetime import datetime, timezone
 from typing import Any
 
+from .error_codes import ContractError, EXPIRED_OR_REVOKED, MISSING_OR_INVALID_FIELD
+
 DEFENSIVE_LANGUAGE_PATTERNS = [
     r"further research is needed",
     r"we do not address",
@@ -20,6 +22,17 @@ DEFENSIVE_LANGUAGE_PATTERNS = [
 class ValidityReview:
     valid: bool
     reasons: tuple[str, ...]
+
+
+class ValidityStandardError(ContractError):
+    """Raised when a validity packet fails the truth-validity standard."""
+
+
+_EXPIRY_REASONS = (
+    "validity expiry is missing",
+    "validity packet is expired",
+    "validity expiry is invalid",
+)
 
 
 def validate_validity_packet(packet: dict[str, Any], *, now: datetime | None = None) -> ValidityReview:
@@ -63,5 +76,6 @@ def validate_validity_packet(packet: dict[str, Any], *, now: datetime | None = N
 def require_validity_packet(packet: dict[str, Any]) -> dict[str, Any]:
     result = validate_validity_packet(packet)
     if not result.valid:
-        raise ValueError("Validity packet blocked: " + "; ".join(result.reasons))
+        code = EXPIRED_OR_REVOKED if any(reason in _EXPIRY_REASONS for reason in result.reasons) else MISSING_OR_INVALID_FIELD
+        raise ValidityStandardError("Validity packet blocked: " + "; ".join(result.reasons), code=code)
     return packet

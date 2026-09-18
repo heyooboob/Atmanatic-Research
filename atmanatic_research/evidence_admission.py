@@ -6,6 +6,14 @@ from dataclasses import dataclass
 from datetime import datetime, timezone
 from typing import Any, Callable, Iterable
 
+from .error_codes import (
+    ContractError,
+    EVIDENCE_CONFLICT,
+    MALFORMED_SYNTAX,
+    MISSING_OR_INVALID_FIELD,
+    SOURCE_POLICY_REJECTED,
+    UNRESOLVED_REFERENCE,
+)
 from .evidence_contracts import validate_evidence_card
 from .source_policy import (
     TIER_RANK,
@@ -19,6 +27,24 @@ BLOCKED_STATUSES = {"stale_source", "conflict", "insufficient_independent_source
 DomainEvidenceValidator = Callable[
     [dict[str, Any], tuple[dict[str, Any], ...]], Iterable[str] | None
 ]
+
+
+class EvidenceAdmissionError(ContractError):
+    """Raised when evidence fails decision-grade or governed admission."""
+
+
+_EVIDENCE_CONFLICT_MARKERS = (
+    "conflicting content hashes",
+    "duplicate evidence id",
+    "evidence status is",
+    "not decision-grade",
+)
+
+
+def _admission_error_code(reasons: tuple[str, ...]) -> str:
+    if any(any(marker in reason for marker in _EVIDENCE_CONFLICT_MARKERS) for reason in reasons):
+        return EVIDENCE_CONFLICT
+    return MISSING_OR_INVALID_FIELD
 
 
 @dataclass(frozen=True)
@@ -71,7 +97,10 @@ def require_decision_evidence(cards: list[dict[str, Any]], *, now: datetime | No
     """Return evidence cards admitted for decision-grade use or raise with reasons."""
     admission = admit_evidence(cards, now=now)
     if not admission.admitted:
-        raise ValueError("Decision evidence blocked: " + "; ".join(admission.reasons))
+        raise EvidenceAdmissionError(
+            "Decision evidence blocked: " + "; ".join(admission.reasons),
+            code=_admission_error_code(admission.reasons),
+        )
     return cards
 
 
@@ -96,18 +125,19 @@ def validate_and_admit_governed_evidence(
 ) -> list[dict[str, Any]]:
     """Apply source policy and acquisition provenance before evidence admission."""
     if request_contexts is not None and not isinstance(request_contexts, dict):
-        raise ValueError("Governed evidence blocked: request_contexts must be an object")
+        raise EvidenceAdmissionError("Governed evidence blocked: request_contexts must be an object", code=MALFORMED_SYNTAX)
     if acquisition_receipts is not None and not isinstance(acquisition_receipts, list):
-        raise ValueError("Governed evidence blocked: acquisition_receipts must be a list")
+        raise EvidenceAdmissionError("Governed evidence blocked: acquisition_receipts must be a list", code=MALFORMED_SYNTAX)
     if domain_validators is not None and not isinstance(domain_validators, dict):
-        raise ValueError("Governed evidence blocked: domain_validators must be an object")
+        raise EvidenceAdmissionError("Governed evidence blocked: domain_validators must be an object", code=MALFORMED_SYNTAX)
     contexts = request_contexts or {}
     receipts = acquisition_receipts or []
     validators = domain_validators or {}
     for name, validator in validators.items():
         if not isinstance(name, str) or not name.strip() or not callable(validator):
-            raise ValueError(
-                "Governed evidence blocked: domain validators require non-empty names and callable values"
+            raise EvidenceAdmissionError(
+                "Governed evidence blocked: domain validators require non-empty names and callable values",
+                code=MALFORMED_SYNTAX,
             )
     policies = registry.get("minimum_evidence", {})
     if not isinstance(policies, dict):
@@ -117,11 +147,13 @@ def validate_and_admit_governed_evidence(
         agent = card.get("agent") if isinstance(card, dict) else None
         source_ids = card.get("source_ids") if isinstance(card, dict) else None
         if not isinstance(agent, str) or not agent.strip():
-            raise ValueError("Governed evidence blocked: card has no valid agent")
+            raise EvidenceAdmissionError("Governed evidence blocked: card has no valid agent", code=MISSING_OR_INVALID_FIELD)
         if not isinstance(source_ids, list) or not source_ids or not all(
             isinstance(source_id, str) and source_id.strip() for source_id in source_ids
         ):
-            raise ValueError("Governed evidence blocked: card has no valid source references")
+            raise EvidenceAdmissionError(
+                "Governed evidence blocked: card has no valid source references", code=MISSING_OR_INVALID_FIELD
+            )
 
         for source_id in source_ids:
             requirement = None
@@ -153,8 +185,9 @@ def validate_and_admit_governed_evidence(
                 and receipt.get("response_content_hash") == card.get("content_hash")
             ]
             if not matching_receipts:
-                raise ValueError(
-                    f"Governed evidence blocked: source '{source_id}' requires an acquisition receipt matching the card content hash"
+                raise EvidenceAdmissionError(
+                    f"Governed evidence blocked: source '{source_id}' requires an acquisition receipt matching the card content hash",
+                    code=SOURCE_POLICY_REJECTED,
                 )
             for receipt in matching_receipts:
                 validate_acquisition_receipt(receipt, source=source)
@@ -165,8 +198,9 @@ def validate_and_admit_governed_evidence(
         requirement = evidence_requirement(registry, agent)
         minimum_sources = requirement.get("minimum_sources", 1)
         if len(sources) < minimum_sources:
-            raise ValueError(
-                f"Governed evidence blocked: agent '{agent}' requires at least {minimum_sources} distinct sources"
+            raise EvidenceAdmissionError(
+                f"Governed evidence blocked: agent '{agent}' requires at least {minimum_sources} distinct sources",
+                code=EVIDENCE_CONFLICT,
             )
         minimum_independent = requirement.get("minimum_independent_sources", 1)
         missing_groups = [
@@ -176,9 +210,10 @@ def validate_and_admit_governed_evidence(
             or not source["independence_group"].strip()
         ]
         if minimum_independent > 1 and missing_groups:
-            raise ValueError(
+            raise EvidenceAdmissionError(
                 "Governed evidence blocked: sources are missing independence_group: "
-                + ", ".join(sorted(missing_groups))
+                + ", ".join(sorted(missing_groups)),
+                code=EVIDENCE_CONFLICT,
             )
         groups = {
             source.get("independence_group")
@@ -187,8 +222,9 @@ def validate_and_admit_governed_evidence(
             and source["independence_group"].strip()
         }
         if minimum_independent > 1 and len(groups) < minimum_independent:
-            raise ValueError(
-                f"Governed evidence blocked: agent '{agent}' requires at least {minimum_independent} independent source groups"
+            raise EvidenceAdmissionError(
+                f"Governed evidence blocked: agent '{agent}' requires at least {minimum_independent} independent source groups",
+                code=EVIDENCE_CONFLICT,
             )
 
     for card in cards:
@@ -208,17 +244,19 @@ def validate_and_admit_governed_evidence(
                     raise TypeError("must return an iterable of reasons")
                 reasons = tuple(findings)
             except Exception as error:
-                raise ValueError(
-                    f"Governed evidence blocked: domain validator '{name}' failed: {error}"
+                raise EvidenceAdmissionError(
+                    f"Governed evidence blocked: domain validator '{name}' failed: {error}", code=EVIDENCE_CONFLICT
                 ) from error
             if not all(isinstance(reason, str) and reason.strip() for reason in reasons):
-                raise ValueError(
-                    f"Governed evidence blocked: domain validator '{name}' returned an invalid reason"
+                raise EvidenceAdmissionError(
+                    f"Governed evidence blocked: domain validator '{name}' returned an invalid reason",
+                    code=MALFORMED_SYNTAX,
                 )
             if reasons:
-                raise ValueError(
+                raise EvidenceAdmissionError(
                     f"Governed evidence blocked by domain validator '{name}': "
-                    + "; ".join(reasons)
+                    + "; ".join(reasons),
+                    code=EVIDENCE_CONFLICT,
                 )
 
     return require_decision_evidence(cards, now=now)
@@ -233,7 +271,7 @@ def require_claim_evidence(
     if not isinstance(source_ids, list) or not source_ids or not all(
         isinstance(source_id, str) and source_id.strip() for source_id in source_ids
     ):
-        raise ValueError("Claim evidence blocked: claim has no valid source references")
+        raise EvidenceAdmissionError("Claim evidence blocked: claim has no valid source references", code=MISSING_OR_INVALID_FIELD)
     admitted_source_ids = {
         source_id
         for card in admitted_cards
@@ -241,5 +279,7 @@ def require_claim_evidence(
     }
     missing = [source_id for source_id in source_ids if source_id not in admitted_source_ids]
     if missing:
-        raise ValueError("Claim evidence blocked: unsupported source references: " + ", ".join(missing))
+        raise EvidenceAdmissionError(
+            "Claim evidence blocked: unsupported source references: " + ", ".join(missing), code=UNRESOLVED_REFERENCE
+        )
     return claim

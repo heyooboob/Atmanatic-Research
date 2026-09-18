@@ -6,12 +6,12 @@ never hardcoded to any product's state directory.
 
 from __future__ import annotations
 
-import json
 from dataclasses import asdict
 from datetime import datetime
 from pathlib import Path
 from typing import Any
 
+from .jsonl import JsonLinesLog
 from .levels import ValidityLevel
 
 
@@ -27,21 +27,14 @@ class PacketStore:
     """Append-only JSON-lines log of validity packets."""
 
     def __init__(self, path: Path):
-        self.path = Path(path)
-        self.path.parent.mkdir(parents=True, exist_ok=True)
+        self._log = JsonLinesLog(path)
+
+    @property
+    def path(self) -> Path:
+        return self._log.path
 
     def append(self, packet: Any) -> None:
-        record = asdict(packet)
-        with self.path.open("a", encoding="utf-8") as handle:
-            handle.write(json.dumps(record, default=_default) + "\n")
+        self._log.append_record(asdict(packet), default=_default)
 
     def read_all(self) -> list[dict]:
-        if not self.path.exists():
-            return []
-        records = []
-        with self.path.open("r", encoding="utf-8") as handle:
-            for line in handle:
-                line = line.strip()
-                if line:
-                    records.append(json.loads(line))
-        return records
+        return self._log.read_all()

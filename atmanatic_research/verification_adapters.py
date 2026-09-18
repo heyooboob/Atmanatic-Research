@@ -19,6 +19,7 @@ from __future__ import annotations
 
 import hashlib
 import time
+import uuid
 from datetime import datetime, timezone
 from typing import Any, Callable
 
@@ -71,24 +72,29 @@ def _ladder_specification_hash() -> str:
 
 
 def run_validity_transition_pilot(
-    *, environment_id: str, now: datetime | None = None
+    *, environment_id: str, artifact_id: str | None = None, now: datetime | None = None
 ) -> dict[str, Any]:
     """Run the narrow invariant check and return a `validate_verification_result`-conformant record.
 
     The result is reproducible from the recorded input alone: `input_artifact_hash`
     is the hash of the declared ladder order this run checked, not an
-    ambient or caller-supplied value.
+    ambient or caller-supplied value. `artifact_id` identifies this specific
+    run's record; two runs must not share an artifact_id since their content
+    (diagnostics, resource usage) can legitimately differ. It defaults to a
+    random suffix rather than a timestamp alone, since wall-clock resolution
+    is not guaranteed to distinguish two rapid successive calls.
     """
     started = time.perf_counter()
     ok, diagnostics = check_validity_transition_table()
     elapsed_ms = (time.perf_counter() - started) * 1000
+    created_at = now or datetime.now(timezone.utc)
 
     record: dict[str, Any] = {
         "schema_version": 1,
-        "artifact_id": f"verification-{SPECIFICATION_ID}",
+        "artifact_id": artifact_id or f"verification-{SPECIFICATION_ID}-{uuid.uuid4().hex}",
         "parent_artifact_ids": [],
         "producer": VERIFIER_NAME,
-        "created_at": (now or datetime.now(timezone.utc)).isoformat(),
+        "created_at": created_at.isoformat(),
         "content_hash": "0" * 64,
         "execution_authorized": False,
         "verifier_name": VERIFIER_NAME,

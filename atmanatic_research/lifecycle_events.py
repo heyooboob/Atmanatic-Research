@@ -8,12 +8,12 @@ object itself is not.
 
 from __future__ import annotations
 
-import json
 from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any, Callable, Collection
 
 from validity_protocol import ValidationResult, ValidityLevel
+from validity_protocol.jsonl import JsonLinesLog
 
 from .error_codes import (
     ContractError,
@@ -113,25 +113,19 @@ class LifecycleEventLog:
     """Append-only JSON-lines log of validated lifecycle transition events."""
 
     def __init__(self, path: Path):
-        self.path = Path(path)
-        self.path.parent.mkdir(parents=True, exist_ok=True)
+        self._log = JsonLinesLog(path)
+
+    @property
+    def path(self) -> Path:
+        return self._log.path
 
     def append(self, event: dict[str, Any]) -> dict[str, Any]:
         validated = validate_lifecycle_event(event)
-        with self.path.open("a", encoding="utf-8") as handle:
-            handle.write(json.dumps(validated, sort_keys=True) + "\n")
+        self._log.append_record(validated, sort_keys=True)
         return validated
 
     def read_all(self) -> list[dict[str, Any]]:
-        if not self.path.exists():
-            return []
-        events = []
-        with self.path.open("r", encoding="utf-8") as handle:
-            for line in handle:
-                line = line.strip()
-                if line:
-                    events.append(json.loads(line))
-        return events
+        return self._log.read_all()
 
     def latest_status(self) -> dict[str, dict[str, Any]]:
         """Return the most recent event per packet, keyed by `packet_content_hash`.

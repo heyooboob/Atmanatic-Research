@@ -265,6 +265,47 @@ Only after Steps 1–7: seek a second, independently-written implementation
 (ideally a different language) and run bidirectional interoperability tests.
 This is the step that actually validates "protocol" versus "library."
 
+## 4a. Review and remediation pass (2026-09-18)
+
+A review after Steps 1–7 found six overlooked or inadequately-applied gaps.
+All six are now closed:
+
+1. **Error-code coverage was only 4 of ~10 validator modules.**
+   `orchestration.py`, `orchestration_audit.py`, `evidence_admission.py`,
+   `truth_review.py`, `validity_standard.py`, and `intelligence_contracts.py`
+   raised bare `ValueError` with no `.code`. All six now derive from
+   `ContractError` and raise with explicit codes from the shared registry
+   (`OrchestrationError`, `IntelligenceContractError`, `TruthReviewError`,
+   `ValidityStandardError`, `EvidenceAdmissionError` are the new/converted
+   classes). `evidence_admission.py`'s mixed `ValueError`/`SourcePolicyError`
+   usage is now consistently `EvidenceAdmissionError` with per-condition codes.
+2. **`verification_adapters.run_validity_transition_pilot()` minted a constant
+   `artifact_id`** across every run, violating the protocol's own rule that an
+   identifier must not stand in for content identity. It now accepts an
+   optional caller-supplied `artifact_id` and otherwise mints a `uuid4`-based
+   one per run; a test proves two runs never collide.
+3. **The benchmark corpus only exercised 2 of ~10 checklist modules** (4
+   cases). It now covers `artifact_lineage`, `evidence_card`,
+   `proposal_envelope`, `source_definition`, `promotion_record`, and
+   `review_outcome` with paired accept/reject cases; the unused
+   `proposal_envelope` mapping is now actually exercised.
+4. **Documentation drift**: `docs/architecture/README.md`'s contents list
+   didn't mention `eigenvector_graph_analysis.md` or
+   `docs/foundations/mathematical_principles.md`, and
+   `implementation_checklist.md` had no entries for `canonical.py`,
+   `timestamps.py`, `error_codes.py`, `graph_analysis.py`,
+   `benchmark_harness.py`, `lifecycle_events.py`, or
+   `verification_adapters.py`. Both fixed; the checklist now has 20 module
+   entries instead of 13.
+5. **Two parallel append-only JSONL log implementations** (`PacketStore` and
+   `LifecycleEventLog`) duplicated the same file I/O pattern. Both now share
+   `validity_protocol/jsonl.py`'s `JsonLinesLog`; their public APIs
+   (`.path`, `.append`, `.read_all`) are unchanged.
+6. **Minor**: unused exception imports in `tests/test_benchmark_harness.py`
+   removed as part of the corpus expansion.
+
+All 168 tests pass after remediation (up from 166).
+
 ## 5. What not to do
 
 - Do not add a composite trust/confidence score anywhere — the plan already

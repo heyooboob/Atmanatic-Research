@@ -4,6 +4,7 @@ from __future__ import annotations
 
 from dataclasses import dataclass
 
+from .error_codes import MALFORMED_SYNTAX, MISSING_OR_INVALID_FIELD
 from .orchestration import OrchestrationError, OrchestrationResult
 
 
@@ -31,9 +32,9 @@ def build_orchestration_audit_events(
 ) -> tuple[OrchestrationAuditEvent, ...]:
     """Project a completed result into an ordered, replay-stable audit event stream."""
     if not isinstance(result, OrchestrationResult):
-        raise OrchestrationError("result must be an OrchestrationResult")
+        raise OrchestrationError("result must be an OrchestrationResult", code=MALFORMED_SYNTAX)
     if not isinstance(run_id, str) or not run_id.strip():
-        raise OrchestrationError("run_id must be a non-empty string")
+        raise OrchestrationError("run_id must be a non-empty string", code=MISSING_OR_INVALID_FIELD)
 
     events: list[OrchestrationAuditEvent] = []
 

@@ -44,6 +44,15 @@ class RunValidityTransitionPilotTests(unittest.TestCase):
         record = run_validity_transition_pilot(environment_id="ci-python-312")
         self.assertFalse(record["execution_authorized"])
 
+    def test_two_runs_never_share_an_artifact_id(self):
+        first = run_validity_transition_pilot(environment_id="ci-python-312")
+        second = run_validity_transition_pilot(environment_id="ci-python-312")
+        self.assertNotEqual(first["artifact_id"], second["artifact_id"])
+
+    def test_caller_supplied_artifact_id_is_honored(self):
+        record = run_validity_transition_pilot(environment_id="ci-python-312", artifact_id="run-42")
+        self.assertEqual(record["artifact_id"], "run-42")
+
 
 if __name__ == "__main__":
     unittest.main()

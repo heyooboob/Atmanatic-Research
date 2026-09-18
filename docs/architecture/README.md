@@ -14,6 +14,14 @@ The goal is to document the system in a way that is:
 - [implementation_checklist.md](implementation_checklist.md) — per-file invariant and validation plan
 - [hardening_standards.md](hardening_standards.md) — cross-cutting standards for idempotence, determinism, and fail-closed behavior
 - [test_strategy.md](test_strategy.md) — module-by-module test strategy and acceptance criteria
+- [eigenvector_graph_analysis.md](eigenvector_graph_analysis.md) — bounded, non-authorizing graph analysis for the optimization/memory layers
+- [../foundations/mathematical_principles.md](../foundations/mathematical_principles.md) — shared mathematical definitions used across the architecture appendix
+
+## Status
+
+See [ATMANATIC_MASTER_IMPLEMENTATION_ROADMAP.md](../../ATMANATIC_MASTER_IMPLEMENTATION_ROADMAP.md)
+for the current per-step implementation status; this appendix documents design
+intent and invariants, not build progress.
 
 ## Core principle
 

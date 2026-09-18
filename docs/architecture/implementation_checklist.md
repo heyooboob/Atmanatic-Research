@@ -469,6 +469,175 @@ This checklist is intended to be the implementation baseline for the repository.
 
 ---
 
+## 14. atmanatic_research/error_codes.py
+
+### Exact invariants to enforce
+- `ERROR_CODES` is the single frozen registry referenced by every validator
+- `ContractError` cannot be constructed with a code outside the registry
+- codes are protocol API: additive changes only, no repurposing an existing code
+
+### Exact validation rules
+- validate the supplied code against `ERROR_CODES` at construction time
+- reject unknown codes before the exception is raised
+
+### Exact rejection conditions
+- unknown or misspelled error code
+- missing code on a `ContractError` subclass raise
+
+### Recommended tests
+- constructing with a known code succeeds
+- constructing with an unknown code raises `ValueError`
+- every module-specific error subclass exposes `.code`
+
+---
+
+## 15. atmanatic_research/timestamps.py
+
+### Exact invariants to enforce
+- every accepted timestamp includes an explicit UTC offset
+- `Z` is accepted as shorthand for `+00:00`
+- naive timestamps fail closed, never silently assumed UTC
+
+### Exact validation rules
+- reject non-string, empty, or malformed timestamp values
+- reject timestamps missing `tzinfo` after parsing
+
+### Exact rejection conditions
+- naive timestamp
+- non-string input
+- malformed ISO/RFC 3339 text
+
+### Recommended tests
+- `Z`-suffixed timestamp accepted
+- explicit-offset timestamp accepted
+- naive timestamp rejected
+- malformed and non-string input rejected
+
+---
+
+## 16. atmanatic_research/canonical.py
+
+### Exact invariants to enforce
+- canonical JSON uses sorted keys and compact separators
+- `content_hash` and `signature` are excluded from the hashed projection
+- non-finite floats (`NaN`, `Infinity`) are rejected, never silently serialized
+
+### Exact validation rules
+- reject non-object input to `project_for_hash`
+- recompute and compare hashes byte-for-byte in `verify_content_hash`
+
+### Exact rejection conditions
+- non-finite float anywhere in the value, including nested
+- non-object passed to `project_for_hash`
+
+### Recommended tests
+- key order does not affect canonical bytes or hash
+- `NaN`/`Infinity` rejected, including nested
+- tampering with a hashed field is detected by `verify_content_hash`
+
+---
+
+## 17. atmanatic_research/graph_analysis.py
+
+### Exact invariants to enforce
+- node/edge input order never affects snapshot hash or rank order
+- unknown node/edge types, duplicate IDs, and unresolved references fail closed
+- scores are finite and non-negative; failure to converge emits a structured finding, never a silent partial result
+- the artifact never carries `execution_authorized: true`
+- nothing in this module may influence evidence admission, truth review, or validity advancement
+
+### Exact validation rules
+- validate node and edge records before snapshot construction
+- reject negative or non-finite edge weights
+- reject a duplicate edge_id whose content differs from the first occurrence
+- require ranked_nodes ordered by descending score, then ascending node_id
+
+### Exact rejection conditions
+- unknown `node_type` or `relation_type`
+- duplicate `node_id`
+- edge referencing an unknown node
+- empty or unknown `seed_node_ids`
+- out-of-order `ranked_nodes` or missing `limitations`
+
+### Recommended tests
+- reversed input order produces an identical snapshot hash
+- unknown types, duplicate IDs, and unresolved edges rejected
+- convergence and forced non-convergence both produce correct, structured results
+- artifact validator rejects `execution_authorized: true` and out-of-order ranks
+
+---
+
+## 18. atmanatic_research/benchmark_harness.py
+
+### Exact invariants to enforce
+- identical case corpora run against the same validators twice must agree exactly
+- false-accept rate, false-reject rate, and reproducibility are reported separately; no composite score
+- unknown validator references fail closed rather than being skipped
+
+### Exact validation rules
+- require a non-empty case sequence
+- raise if the two-pass run disagrees (non-reproducible)
+
+### Exact rejection conditions
+- empty case list
+- case referencing an unregistered validator
+- non-reproducible run
+
+### Recommended tests
+- conformant record passes `validate_benchmark`
+- a deliberately broken validator produces a failing case, not a silent pass
+- fixture hash is stable across repeated runs with identical cases
+
+---
+
+## 19. atmanatic_research/lifecycle_events.py
+
+### Exact invariants to enforce
+- every transition attempt is recorded, whether accepted or rejected
+- rejected events always carry at least one violation; accepted events carry none
+- `latest_status` resolves recency by `created_at`, not append/arrival order
+
+### Exact validation rules
+- validate `prior_level`/`requested_level` against the known validity levels
+- validate `created_at` as an explicit-offset timestamp
+- reject accepted events with violations and rejected events without any
+
+### Exact rejection conditions
+- unknown validity level
+- naive timestamp
+- accepted/rejected result inconsistent with the violations list
+
+### Recommended tests
+- accepted and rejected transitions both produce a validated event
+- accepted-with-violations and rejected-without-violations both rejected
+- append/read round-trip is stable; latest_status ignores write order
+
+---
+
+## 20. atmanatic_research/verification_adapters.py
+
+### Exact invariants to enforce
+- the checked specification (the declared validity ladder) is fixed, reviewed code, not untrusted input
+- `input_artifact_hash` is derived from the specification itself, so a result is reproducible from recorded input alone
+- two runs never share an `artifact_id` unless the caller explicitly supplies one
+- a broken transition rule is flagged, never silently treated as passing
+
+### Exact validation rules
+- `check_validity_transition_table` accepts injectable `levels`/`can_advance_fn` for testing against a deliberately broken specification
+- the returned record must satisfy `validate_verification_result`
+
+### Exact rejection conditions
+- unreachable validity level
+- non-monotonic (backward) transition
+- malformed verification-result envelope
+
+### Recommended tests
+- the real ladder verifies clean
+- injected broken reachability and monotonicity are both flagged
+- default artifact_id is unique per run; caller-supplied artifact_id is honored
+
+---
+
 ## 14. validity_protocol/levels.py
 
 ### Exact invariants to enforce

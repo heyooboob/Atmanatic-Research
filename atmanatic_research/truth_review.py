@@ -6,6 +6,8 @@ import re
 from dataclasses import dataclass
 from typing import Any
 
+from .error_codes import ContractError, SELF_REVIEW_OR_UNRESOLVED
+
 WEAK_FALSIFIER_PATTERNS = [
     r"^n/?a$",
     r"^none$",
@@ -35,6 +37,10 @@ MEASUREMENT_FIELDS = ("metric", "operator", "threshold", "unit", "observation_wi
 class TruthReview:
     admitted: bool
     reasons: tuple[str, ...]
+
+
+class TruthReviewError(ContractError):
+    """Raised when a claim fails the adversarial truth-review gate."""
 
 
 def _review_falsifier_measurement(claim: dict[str, Any], reasons: list[str]) -> None:
@@ -119,5 +125,7 @@ def require_truth_review(claim: dict[str, Any]) -> dict[str, Any]:
     """Return the claim only after the adversarial review contract passes."""
     result = review_claim(claim)
     if not result.admitted:
-        raise ValueError("Truth review blocked: " + "; ".join(result.reasons))
+        raise TruthReviewError(
+            "Truth review blocked: " + "; ".join(result.reasons), code=SELF_REVIEW_OR_UNRESOLVED
+        )
     return claim

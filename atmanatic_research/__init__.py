@@ -10,11 +10,12 @@ from .intelligence_contracts import (
     validate_intelligence_collection,
     validate_soak,
 )
-from .truth_review import TruthReview, require_truth_review, review_claim
-from .validity_standard import ValidityReview, require_validity_packet, validate_validity_packet
+from .truth_review import TruthReview, TruthReviewError, require_truth_review, review_claim
+from .validity_standard import ValidityReview, ValidityStandardError, require_validity_packet, validate_validity_packet
 from .evidence_admission import (
     DomainEvidenceValidator,
     EvidenceAdmission,
+    EvidenceAdmissionError,
     admit_evidence,
     require_decision_evidence,
     require_claim_evidence,
@@ -131,12 +132,15 @@ __all__ = [
     "validate_intelligence_collection",
     "validate_soak",
     "TruthReview",
+    "TruthReviewError",
     "require_truth_review",
     "review_claim",
     "ValidityReview",
+    "ValidityStandardError",
     "require_validity_packet",
     "validate_validity_packet",
     "EvidenceAdmission",
+    "EvidenceAdmissionError",
     "DomainEvidenceValidator",
     "admit_evidence",
     "require_decision_evidence",

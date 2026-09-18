@@ -1,15 +1,15 @@
 import unittest
 
 from atmanatic_research import (
-    ArtifactContractError,
     BenchmarkCase,
     BenchmarkHarnessError,
-    EvidenceContractError,
-    ProposalContractError,
     run_benchmark,
     validate_artifact_lineage,
     validate_evidence_card,
+    validate_promotion_record,
     validate_proposal_envelope,
+    validate_review_outcome,
+    validate_source_definition,
     validate_benchmark,
 )
 
@@ -32,10 +32,57 @@ def _invalid_lineage():
     return record
 
 
+def _valid_proposal():
+    return {
+        "schema_version": 1,
+        "proposal_id": "p-1",
+        "parent_proposal_id": None,
+        "producer": "agent",
+        "created_at": "2026-09-17T12:00:00Z",
+        "content_hash": "a" * 64,
+        "evidence_refs": ["e-1"],
+        "tool_versions": {"agent": "1.0"},
+        "payload": {"claim": "x"},
+        "execution_authorized": False,
+    }
+
+
+def _valid_promotion():
+    record = _valid_lineage()
+    record.update(
+        {
+            "approver": "human-reviewer",
+            "approved_artifact_hash": "a" * 64,
+            "approved_scope": "bounded evaluation environment",
+            "approved_at": "2026-09-17T01:00:00+00:00",
+            "rollback_target": "artifact-previous",
+            "status": "approved",
+        }
+    )
+    return record
+
+
+def _valid_review():
+    record = _valid_lineage()
+    record.update(
+        {
+            "reviewer": "independent-reviewer",
+            "subject_artifact_hash": "a" * 64,
+            "challenge_findings": ["tested the declared boundary"],
+            "outcome": "challenged_and_resolved",
+            "resolution": "the boundary held for the declared fixture",
+        }
+    )
+    return record
+
+
 VALIDATORS = {
     "artifact_lineage": validate_artifact_lineage,
     "evidence_card": validate_evidence_card,
     "proposal_envelope": validate_proposal_envelope,
+    "source_definition": validate_source_definition,
+    "promotion_record": validate_promotion_record,
+    "review_outcome": validate_review_outcome,
 }
 
 CASES = [
@@ -59,6 +106,29 @@ CASES = [
             "details": {},
         },
         "accept",
+    ),
+    BenchmarkCase("proposal-valid", "proposal_envelope", _valid_proposal(), "accept"),
+    BenchmarkCase(
+        "proposal-invalid-authority",
+        "proposal_envelope",
+        {**_valid_proposal(), "execution_authorized": True},
+        "reject",
+    ),
+    BenchmarkCase("source-valid", "source_definition", {"source_id": "s-1"}, "accept"),
+    BenchmarkCase("source-missing-id", "source_definition", {"source_id": ""}, "reject"),
+    BenchmarkCase("promotion-valid", "promotion_record", _valid_promotion(), "accept"),
+    BenchmarkCase(
+        "promotion-invalid-status",
+        "promotion_record",
+        {**_valid_promotion(), "status": "not-a-real-status"},
+        "reject",
+    ),
+    BenchmarkCase("review-valid", "review_outcome", _valid_review(), "accept"),
+    BenchmarkCase(
+        "review-self-authored",
+        "review_outcome",
+        {**_valid_review(), "reviewer": "research-agent"},
+        "reject",
     ),
 ]
 
