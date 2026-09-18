@@ -215,6 +215,20 @@ and `test_pilot_is_reproducible_in_verdict_and_diagnostics`.
 
 ### Step 6 — Phase 7: prove the repository split for real
 
+**Status: done.** `scripts/verify_repository_split.py` builds the wheel,
+installs it into an isolated `--target` directory (no venv/`ensurepip`
+bootstrap needed), and runs a consumer smoke test with `PYTHONPATH` limited to
+that directory and `cwd` outside the repository. The smoke test asserts the
+repository is not on `sys.path`, that `atmanatic_research.__file__` resolves
+outside the repository tree, and that `validate_artifact_lineage` behaves
+correctly (accepts a valid record, rejects `execution_authorized: true`) from
+the installed package alone. After the consumer environment is deleted, the
+script re-runs Atmanatic's own test suite from the repository to confirm it
+never depended on the consumer. Executed run: wheel built
+(`atmanatic_research-0.1.0-py3-none-any.whl`), consumer smoke test printed
+`CONSUMER_SMOKE_TEST_OK` from the installed path, and all 160 repository tests
+passed afterward — converting this from an asserted target into evidence.
+
 1. Stand up a throwaway second directory/repo that imports only the built
    wheel (not the source tree) and runs a minimal consumer test suite against
    it.
