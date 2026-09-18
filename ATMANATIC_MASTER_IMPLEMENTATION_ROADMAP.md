@@ -87,22 +87,30 @@ These block any real interoperability claim and are the single biggest
 credibility risk right now (a draft that admits its own hashing scheme isn't
 frozen cannot be implemented twice).
 
-1. Freeze one canonical JSON representation (sorted keys, fixed separators,
-   fixed number formatting) and a `content_hash` projection algorithm that
-   excludes `content_hash` and signature fields from the hashed bytes.
-2. Enforce the RFC 3339 + explicit-UTC-offset timestamp rule in the existing
-   validators (`proposal_contracts.py`, `artifact_contracts.py`,
-   `evidence_contracts.py`) — currently they accept naive ISO strings.
-3. Add a machine-readable error-code enum shared across all validators,
-   replacing free-text exception messages as the thing callers branch on.
-4. Add the `extensions` / `critical_extensions` mechanism with fail-closed
-   rejection of unknown critical extensions.
+**Status: done.** `atmanatic_research/canonical.py` freezes canonical JSON
+(sorted keys, compact separators, non-finite rejection) and the `content_hash`
+projection/verification functions; `atmanatic_research/timestamps.py` enforces
+RFC 3339 with an explicit UTC offset across artifact, evidence, proposal, and
+acquisition-receipt validators; `atmanatic_research/error_codes.py` gives every
+contract exception (`ArtifactContractError`, `ProposalContractError`,
+`EvidenceContractError`, `SourcePolicyError`) a stable `.code` from the
+registry in the protocol draft's error model section; and
+`validate_artifact_lineage()` now accepts `supported_extensions` and enforces
+fail-closed rejection of unsupported critical extensions while preserving
+unknown non-critical ones. Remaining open items: normative JSON Schemas,
+signatures/key lifecycle, and structured codes on `ValidationResult` (the
+validity-transition path still returns string violations, not codes).
+
+1. ~~Freeze one canonical JSON representation...~~
+2. ~~Enforce the RFC 3339 + explicit-UTC-offset timestamp rule...~~
+3. ~~Add a machine-readable error-code enum...~~
+4. ~~Add the `extensions` / `critical_extensions` mechanism...~~
 5. Update the draft from "Proposed" to "Implemented" only after tests exist
-   for each item above.
+   for each item above — done for sections 5.1, 5.2, 5.3, and 11.
 
 **Exit check:** two people, given only the updated protocol doc, could
 independently write a validator that agrees byte-for-byte on a content hash
-for the same fixture artifact.
+for the same fixture artifact. Verified by `tests/test_canonical.py`.
 
 ### Step 3 — Phase 4: deterministic benchmark harness
 

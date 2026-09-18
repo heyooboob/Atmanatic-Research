@@ -4,15 +4,23 @@ from __future__ import annotations
 
 import re
 from dataclasses import dataclass
-from datetime import datetime
 from types import MappingProxyType
 from typing import Any, Mapping
+
+from .error_codes import (
+    ContractError,
+    MALFORMED_SYNTAX,
+    MISSING_OR_INVALID_FIELD,
+    PROHIBITED_AUTHORITY_CLAIM,
+    UNSUPPORTED_VERSION,
+)
+from .timestamps import TimestampError, parse_rfc3339
 
 PROPOSAL_SCHEMA_VERSION = 1
 _SHA256 = re.compile(r"^[0-9a-fA-F]{64}$")
 
 
-class ProposalContractError(ValueError):
+class ProposalContractError(ContractError):
     """Raised when proposer output violates the versioned envelope contract."""
 
 
@@ -32,17 +40,19 @@ class ProposalEnvelope:
 
 def _non_empty_string(value: Any, field: str) -> str:
     if not isinstance(value, str) or not value.strip():
-        raise ProposalContractError(f"{field} must be a non-empty string")
+        raise ProposalContractError(
+            f"{field} must be a non-empty string", code=MISSING_OR_INVALID_FIELD
+        )
     return value
 
 
 def validate_proposal_envelope(value: dict[str, Any]) -> ProposalEnvelope:
     """Validate untrusted proposer output and return an immutable typed envelope."""
     if not isinstance(value, dict):
-        raise ProposalContractError("proposal envelope must be an object")
+        raise ProposalContractError("proposal envelope must be an object", code=MALFORMED_SYNTAX)
     if value.get("schema_version") != PROPOSAL_SCHEMA_VERSION:
         raise ProposalContractError(
-            f"schema_version must be {PROPOSAL_SCHEMA_VERSION}"
+            f"schema_version must be {PROPOSAL_SCHEMA_VERSION}", code=UNSUPPORTED_VERSION
         )
     proposal_id = _non_empty_string(value.get("proposal_id"), "proposal_id")
     parent_proposal_id = value.get("parent_proposal_id")
@@ -51,26 +61,32 @@ def validate_proposal_envelope(value: dict[str, Any]) -> ProposalEnvelope:
             parent_proposal_id, "parent_proposal_id"
         )
         if parent_proposal_id == proposal_id:
-            raise ProposalContractError("parent_proposal_id must differ from proposal_id")
+            raise ProposalContractError(
+                "parent_proposal_id must differ from proposal_id",
+                code=MISSING_OR_INVALID_FIELD,
+            )
     producer = _non_empty_string(value.get("producer"), "producer")
     created_at = _non_empty_string(value.get("created_at"), "created_at")
     try:
-        parsed_created_at = datetime.fromisoformat(created_at.replace("Z", "+00:00"))
-    except ValueError as error:
-        raise ProposalContractError("created_at must be a valid ISO timestamp") from error
-    if parsed_created_at.tzinfo is None:
-        raise ProposalContractError("created_at must include a timezone")
+        parse_rfc3339(created_at, "created_at")
+    except TimestampError as error:
+        raise ProposalContractError(str(error), code=MISSING_OR_INVALID_FIELD) from error
     content_hash = _non_empty_string(value.get("content_hash"), "content_hash")
     if not _SHA256.fullmatch(content_hash):
-        raise ProposalContractError("content_hash must be a SHA-256 hex digest")
+        raise ProposalContractError(
+            "content_hash must be a SHA-256 hex digest", code=MALFORMED_SYNTAX
+        )
 
     evidence_refs = value.get("evidence_refs")
     if not isinstance(evidence_refs, list) or not evidence_refs or not all(
         isinstance(reference, str) and reference.strip() for reference in evidence_refs
     ):
-        raise ProposalContractError("evidence_refs must be a non-empty list of strings")
+        raise ProposalContractError(
+            "evidence_refs must be a non-empty list of strings",
+            code=MISSING_OR_INVALID_FIELD,
+        )
     if len(evidence_refs) != len(set(evidence_refs)):
-        raise ProposalContractError("evidence_refs must be unique")
+        raise ProposalContractError("evidence_refs must be unique", code=MISSING_OR_INVALID_FIELD)
     tool_versions = value.get("tool_versions")
     if not isinstance(tool_versions, dict) or not tool_versions or not all(
         isinstance(name, str)
@@ -80,13 +96,16 @@ def validate_proposal_envelope(value: dict[str, Any]) -> ProposalEnvelope:
         for name, version in tool_versions.items()
     ):
         raise ProposalContractError(
-            "tool_versions must be a non-empty mapping of names to versions"
+            "tool_versions must be a non-empty mapping of names to versions",
+            code=MISSING_OR_INVALID_FIELD,
         )
     payload = value.get("payload")
     if not isinstance(payload, dict) or not payload:
-        raise ProposalContractError("payload must be a non-empty object")
+        raise ProposalContractError("payload must be a non-empty object", code=MISSING_OR_INVALID_FIELD)
     if value.get("execution_authorized") is not False:
-        raise ProposalContractError("execution_authorized must be false")
+        raise ProposalContractError(
+            "execution_authorized must be false", code=PROHIBITED_AUTHORITY_CLAIM
+        )
 
     return ProposalEnvelope(
         schema_version=PROPOSAL_SCHEMA_VERSION,

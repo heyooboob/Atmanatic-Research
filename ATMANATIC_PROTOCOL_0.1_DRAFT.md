@@ -157,22 +157,31 @@ decision-grade determination until its declared revalidation process succeeds.
 
 ### 5.1 Timestamp profile
 
-**Proposed.** Interoperable 0.1 wire artifacts MUST encode timestamps using
-RFC 3339 with an explicit UTC offset. Producers SHOULD emit UTC using `Z`.
-Naive timestamps MUST be rejected. Leap-second handling MUST be documented by
-an implementation profile.
+Interoperable 0.1 wire artifacts MUST encode timestamps using RFC 3339 with an
+explicit UTC offset. Producers SHOULD emit UTC using `Z`. Naive timestamps
+MUST be rejected. Leap-second handling MUST be documented by an implementation
+profile.
 
-The current reference validators accept ISO timestamp strings and do not
-consistently require an explicit offset. Strict timestamp conformance therefore
-remains proposed work.
+The reference validators now share one `parse_rfc3339` implementation
+(`atmanatic_research/timestamps.py`) used by artifact lineage, evidence cards,
+proposal envelopes, and acquisition receipts. A timestamp without an explicit
+offset fails closed with `TimestampError` in every one of those validators.
 
 ### 5.2 Canonical representation and content hashes
 
-**Proposed.** A conforming wire implementation MUST use a single published JSON
+A conforming wire implementation MUST use a single published JSON
 canonicalization scheme. The `content_hash` MUST be computed over canonical
-artifact bytes with `content_hash` and signatures omitted according to a
-published projection algorithm. The exact algorithm and media type MUST be
-frozen before Draft 0.2.
+artifact bytes with `content_hash` and `signature` omitted according to a
+published projection algorithm.
+
+The reference implementation freezes this scheme in
+`atmanatic_research/canonical.py`: object keys are sorted, separators are
+compact (`,`/`:`), encoding is UTF-8, and non-finite numbers (`NaN`,
+`Infinity`) are rejected rather than silently serialized. `project_for_hash()`
+removes `content_hash` and `signature` before hashing; `compute_content_hash()`
+returns the SHA-256 hex digest of the resulting canonical bytes; and
+`verify_content_hash()` recomputes and compares against a record's declared
+hash. Media-type registration remains open work for Draft 0.2.
 
 The current `PacketStore` writes ordinary JSON Lines and does not provide
 canonical bytes, hash verification, locking, signatures, or tamper evidence.
@@ -180,12 +189,20 @@ Its output is a local persistence format, not the normative wire format.
 
 ### 5.3 Extensions
 
-**Proposed.** Artifacts MAY contain an `extensions` object. Each extension key
-MUST be a collision-resistant URI or a name from the protocol registry.
-Critical extensions MUST also be listed in `critical_extensions`. A recipient
-MUST reject an artifact containing an unsupported critical extension. Unknown
+Artifacts MAY contain an `extensions` object. Each extension key MUST be a
+collision-resistant URI or a name from the protocol registry. Critical
+extensions MUST also be listed in `critical_extensions`. A recipient MUST
+reject an artifact containing an unsupported critical extension. Unknown
 non-critical extensions MUST be preserved when relaying an artifact and MUST
 NOT alter core validation results.
+
+`validate_artifact_lineage()` and the artifact validators built on it accept an
+optional `supported_extensions` collection naming the critical extension
+identifiers the caller understands. Any `critical_extensions` entry outside
+that set, or missing from the accompanying `extensions` object, fails closed
+with `UNSUPPORTED_CRITICAL_EXTENSION` or `MISSING_OR_INVALID_FIELD`. Unknown
+non-critical extensions are preserved on the validated record without effect on
+the result. A protocol-wide extension registry remains open work for Draft 0.2.
 
 ## 6. Core artifact types
 
@@ -441,8 +458,8 @@ require a separate governance policy.
 
 ## 11. Error model
 
-**Proposed.** Validators MUST return stable machine-readable error codes in
-addition to human-readable messages. Codes MUST identify at least:
+Validators MUST return stable machine-readable error codes in addition to
+human-readable messages. Codes MUST identify at least:
 
 - malformed syntax;
 - unsupported version;
@@ -459,6 +476,15 @@ addition to human-readable messages. Codes MUST identify at least:
 
 Error codes are protocol API and MUST follow compatibility rules. Human-readable
 messages MAY change without a protocol version change.
+
+The reference implementation defines this registry in
+`atmanatic_research/error_codes.py` as the `ERROR_CODES` frozenset, with a
+shared `ContractError` base exception carrying a `.code` attribute.
+`ArtifactContractError`, `ProposalContractError`, `EvidenceContractError`, and
+`SourcePolicyError` all raise with an explicit code from this registry. The
+validity-transition `ValidationResult` violation list does not yet carry
+structured codes; that remains open work tracked in the master implementation
+roadmap.
 
 ## 12. Security considerations
 
@@ -635,12 +661,14 @@ conformance.
 | Common lineage envelope | Implemented for review, verification, and promotion records |
 | Independent hash-linked review advancement | Implemented |
 | Provider-neutral referee loop | Implemented, non-core |
-| Canonical JSON wire representation | Not implemented |
+| Canonical JSON wire representation | Implemented (`atmanatic_research/canonical.py`) |
 | Normative JSON Schemas | Not implemented |
-| Hash recomputation and verification | Not implemented |
+| Hash recomputation and verification | Implemented (`compute_content_hash`, `verify_content_hash`) |
 | Digital signatures and key lifecycle | Not implemented |
 | Transition, revocation, and transparency events | Not implemented |
-| Stable machine-readable errors | Not implemented |
+| Stable machine-readable errors | Implemented (`atmanatic_research/error_codes.py`) |
+| Strict RFC 3339 timestamp enforcement | Implemented (`atmanatic_research/timestamps.py`) |
+| Critical/non-critical extension handling | Implemented in `validate_artifact_lineage` and its dependents |
 | Extension and algorithm registries | Not implemented |
 | Independent non-Python implementation | Not implemented |
 | Cross-implementation conformance report | Not implemented |

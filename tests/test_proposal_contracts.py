@@ -40,7 +40,7 @@ class ProposalContractTests(unittest.TestCase):
         for overrides, message in (
             ({"schema_version": 2}, "schema_version"),
             ({"parent_proposal_id": "proposal-1"}, "must differ"),
-            ({"created_at": "2026-09-17T12:00:00"}, "include a timezone"),
+            ({"created_at": "2026-09-17T12:00:00"}, "explicit UTC offset"),
             ({"content_hash": "not-a-hash"}, "SHA-256"),
         ):
             with self.subTest(message=message):

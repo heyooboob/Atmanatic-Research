@@ -121,7 +121,7 @@ class SourcePolicyTests(unittest.TestCase):
             "identity_requirement_satisfied": False,
             "response_content_hash": "sha256:abc",
         }
-        with self.assertRaisesRegex(SourcePolicyError, "include a timezone"):
+        with self.assertRaisesRegex(SourcePolicyError, "explicit UTC offset"):
             validate_acquisition_receipt(receipt)
 
         receipt["retrieved_at"] = "2026-09-17T12:00:00Z"
