@@ -21,9 +21,32 @@ Atmanatic owns domain-neutral research contracts, evidence and provenance
 structures, validity packets, falsification and review rules, source-policy
 evaluation, and deterministic research transformations.
 
+The project also maintains a grounded architecture appendix describing the
+separation between optimization, memory, verification, and authority. These
+materials provide file-by-file invariants, rejection conditions, and hardening
+standards for deterministic, fail-closed operation. They are implementation
+guides for the package and do not modify the protocol claim model or grant
+execution authority.
+
 External consumers may use this project's published package or API, but they
 are not included in this project and have no shared filesystem, database,
 credential, treasury, or execution relationship here.
+
+## Architecture appendix
+
+The project includes a grounded implementation appendix under
+`docs/architecture/` covering:
+
+- a layered architecture model for optimization, memory, verification, and
+  authority;
+- module-by-module invariants and rejection conditions;
+- fail-closed and idempotent hardening standards;
+- a test strategy for deterministic validation and replayability.
+
+These materials are intended to complement the protocol and contract rules, not
+replace them. Optimization, memory continuity, and retrieval analysis may
+improve context quality and throughput, but they do not validate truth,
+substitute for evidence admission, or grant execution authority.
 
 ## Build
 

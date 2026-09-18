@@ -145,6 +145,31 @@ Performance or reliability claims require fixed fixtures, reproducible
 configuration, recorded versions, and comparison with a baseline. A faster
 implementation that silently weakens validation is a regression.
 
+### 3.7 Grounded execution stack and operational boundaries
+
+The implementation should be interpreted as a grounded execution stack with four
+separate responsibilities. The optimization layer improves ordering, batching,
+and locality without altering the truth of the underlying claims. The memory
+layer preserves state continuity and replayable context. The verification layer
+validates structure, evidence, provenance, review state, and formal invariants.
+The authority layer remains separate from the research artifact itself and owns
+any decision to promote, consume, or execute an artifact.
+
+These responsibilities are distinct and intentionally separated. No lower layer
+may infer execution authority, validity, or truth by implication. Optimization,
+memory continuity, and retrieval analysis may improve context and throughput, but
+they do not validate truth, substitute for evidence admission, or grant
+execution authority.
+
+The project maintains a grounded architecture appendix documenting this layered
+model, file-by-file invariants, rejection conditions, and hardening standards.
+The appendix should be read as a complement to the protocol and contract rules,
+not as a replacement for them. See [docs/architecture/README.md](docs/architecture/README.md),
+[docs/architecture/layered_stack.md](docs/architecture/layered_stack.md),
+[docs/architecture/implementation_checklist.md](docs/architecture/implementation_checklist.md),
+[docs/architecture/hardening_standards.md](docs/architecture/hardening_standards.md),
+and [docs/architecture/test_strategy.md](docs/architecture/test_strategy.md).
+
 ## 4. Target architecture
 
 The implementation is divided into four planes.
@@ -171,6 +196,15 @@ artifacts; it does not directly authorize execution.
 A human or separately governed service decides whether a validated artifact
 may be promoted or consumed by an operational system. This plane owns
 credentials, deployment, execution, and emergency controls.
+
+The four planes should be interpreted as a layered execution model with clear
+boundaries. The optimization plane is responsible for batching, ordering, and
+locality. The memory plane preserves structure and replayable context. The
+verification plane enforces schema, evidence, review, and formal validation
+rules. The authority plane remains external to the artifact model and decides
+whether a validated artifact may be acted upon. A full implementation guide for
+this grounded layer model is maintained in
+[docs/architecture/layered_stack.md](docs/architecture/layered_stack.md).
 
 ## 5. Phase 0: Baseline, threat model, and contract freeze
 
@@ -204,6 +238,17 @@ baseline before adding orchestration or formal tooling.
    - unauthorized execution from a research artifact.
 5. Define prohibited claims, including “universally true,” “guaranteed
    profitable,” and “safe because Lean compiled.”
+6. Maintain a file-by-file implementation checklist covering invariants,
+   validation rules, rejection conditions, and required tests for each public
+   module. This checklist is maintained in
+   [docs/architecture/implementation_checklist.md](docs/architecture/implementation_checklist.md).
+7. Maintain a hardening standard for fail-closed validation, idempotence,
+   determinism, explicit rejection reasons, no implicit authority, and
+   replayable state transitions. This standard is maintained in
+   [docs/architecture/hardening_standards.md](docs/architecture/hardening_standards.md).
+8. Maintain a module-by-module validation strategy covering valid, invalid,
+   replay, and authority-boundary conditions. This strategy is maintained in
+   [docs/architecture/test_strategy.md](docs/architecture/test_strategy.md).
 
 ### Expanded considerations
 
