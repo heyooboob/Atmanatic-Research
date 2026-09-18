@@ -244,6 +244,17 @@ target. Executing it once converts it from a claim into evidence.
 
 ### Step 7 — Phase 8: release hardening
 
+**Status: partially done.** `scripts/inspect_release.py` builds the wheel,
+computes its SHA-256 over the exact archive bytes, and fails closed if any
+member falls outside `atmanatic_research`/`validity_protocol` or escapes the
+archive root (path traversal). `tests/test_release_inspection.py` proves a
+synthetic wheel containing an unexpected top-level package is rejected, and
+that the current tree builds a clean one. Still open, and lower priority until
+there is a real external consumer to ship to: signing, key lifecycle, a CI
+pipeline that runs this on tag, a rollback runbook, and dependency/vulnerability
+scanning (the package has zero runtime dependencies today, so this is low risk
+but not yet automated).
+
 Signed, hash-verified, rollback-capable releases with CI wheel inspection and
 a dependency/vulnerability scan — mechanical once Steps 1–6 exist, and low
 value to do earlier since there's nothing worth shipping externally yet.
