@@ -30,6 +30,9 @@ with the Python reference implementation on real inputs.
   Node). It has no dependency on `atmanatic_research` or `validity_protocol`;
   it only reads `fixtures/` and `fixtures/canonical_hash_parity.json`. See
   `reference-ts/package.json` (`npm install && npm test`).
+- `generate_report.py` — runs both reference implementations against the
+  fixture corpus and canonical-hash-parity check and writes
+  `INTEROPERABILITY_REPORT.md` from the actual results.
 
 ## What counts as interoperability evidence
 
@@ -81,3 +84,12 @@ npm test
 
 `npm test` type-checks the implementation and runs it against every fixture
 plus the canonical-hash-parity check.
+
+## Regenerating the interoperability report
+
+```
+python interop/generate_report.py
+```
+
+Requires `npm install` to have been run in `interop/reference-ts` first. See
+`INTEROPERABILITY_REPORT.md` for the current result.

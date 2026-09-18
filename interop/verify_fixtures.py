@@ -53,6 +53,33 @@ def verify() -> int:
     return checked
 
 
+def collect_results() -> list[dict[str, object]]:
+    """Return per-fixture actual verdict/code, for report generation.
+
+    Unlike `verify()`, this never raises on drift; it reports what actually
+    happened so a report can show disagreement instead of crashing on it.
+    """
+    manifest_path = FIXTURES_DIR / "manifest.json"
+    manifest = json.loads(manifest_path.read_text(encoding="utf-8"))
+    results: list[dict[str, object]] = []
+    for entry in manifest:
+        fixture_path = FIXTURES_DIR / entry["path"]
+        fixture = json.loads(fixture_path.read_text(encoding="utf-8"))
+        validator, _ = CASE_SUITES[fixture["artifact_type"]]
+        actual_verdict, actual_code = _actual_verdict(validator, fixture["input"])
+        results.append(
+            {
+                "case_id": fixture["case_id"],
+                "artifact_type": fixture["artifact_type"],
+                "expected_verdict": fixture["expected"]["verdict"],
+                "expected_code": fixture["expected"].get("error_code"),
+                "actual_verdict": actual_verdict,
+                "actual_code": actual_code,
+            }
+        )
+    return results
+
+
 def main() -> int:
     checked = verify()
     print(f"verified {checked} fixtures against the reference implementation with zero drift")

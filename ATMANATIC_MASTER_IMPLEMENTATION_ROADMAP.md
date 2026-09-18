@@ -333,6 +333,29 @@ implementation in a strictly-typed language (Rust/Go) remains noted as a
 future option if warranted by a real consumer or standards-body review, not
 scheduled now.
 
+## 4b. Interoperability report and CI (2026-09-18)
+
+Two follow-on items closed after Step 8:
+
+1. **Interoperability report.** `interop/generate_report.py` runs both
+   reference implementations against the shared fixture corpus and the
+   canonical-hash-parity check, then writes `interop/INTEROPERABILITY_REPORT.md`
+   from the actual results — generated, not hand-maintained, so it cannot claim
+   agreement that doesn't exist. Current result: **19/19 fixtures agree** on
+   verdict and error code, and the canonical hash parity check matches.
+   `interop/reference-ts/src/checkFixtures.ts` is the TypeScript-side CLI that
+   emits machine-readable results for this report (kept separate from the test
+   file so the generator doesn't have to parse a test-runner's output format).
+   `tests/test_interoperability_report.py` re-generates and asserts full
+   agreement, skipping cleanly if `npm`/TypeScript deps aren't present.
+2. **CI wiring.** `.github/workflows/ci.yml` runs three jobs: `python` (matrix
+   3.11/3.12 — test suite, the repository-split acceptance script, and release
+   wheel inspection), `typescript` (`npm ci && npm test` against the fixture
+   corpus), and `interoperability-report` (regenerates and uploads the report
+   as a build artifact on every push/PR). This is the first CI configuration
+   in the repository; previously every regression-catching script here had to
+   be run manually.
+
 ## 4a. Review and remediation pass (2026-09-18)
 
 A review after Steps 1–7 found six overlooked or inadequately-applied gaps.
