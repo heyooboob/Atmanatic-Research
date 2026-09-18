@@ -1,0 +1,9 @@
+{
+  "description": "Cross-language canonical content-hash parity check. Both the Python (atmanatic_research.compute_content_hash) and TypeScript (reference-ts/src/canonical.ts computeContentHash) implementations MUST compute this exact SHA-256 hash for this exact record. content_hash and signature fields are excluded from the hashed projection.",
+  "record": {
+    "artifact_id": "a-1",
+    "producer": "agent",
+    "content_hash": "irrelevant"
+  },
+  "expected_sha256": "b93d00dc2a8e78c892cd6a71457e14b6c88f37947d2932f9ecceeac1935d7c5b"
+}

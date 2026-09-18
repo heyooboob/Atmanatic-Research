@@ -1,0 +1,15 @@
+{
+  "name": "@atmanatic/reference-ts",
+  "version": "0.1.0",
+  "private": true,
+  "description": "Independent TypeScript implementation validating the Atmanatic Protocol 0.1 interoperability fixture corpus.",
+  "type": "module",
+  "scripts": {
+    "build": "tsc",
+    "test": "tsc && node --test dist/test/fixtures.test.js dist/test/canonical.test.js"
+  },
+  "devDependencies": {
+    "typescript": "^5.6.0",
+    "@types/node": "^22.0.0"
+  }
+}

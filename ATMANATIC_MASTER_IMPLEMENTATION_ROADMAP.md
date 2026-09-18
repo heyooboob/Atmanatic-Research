@@ -291,10 +291,47 @@ produce; and the governance/IP/standards-body activity in the draft's section
 17, which is an organizational process, not an engineering task, and is not
 simulated here.
 
+**Future language expansion (noted, not scheduled):** once one second
+implementation has full fixture parity, a deliberately different runtime
+(strictly typed, e.g. Rust or Go) would add real evidence-matrix value by
+stressing canonicalization/timestamp assumptions a dynamically-typed second
+implementation wouldn't. This is intentionally not started now — sequencing
+is: prove the pattern once, then add more only if warranted by a real
+consumer or standards-body review, not for its own sake.
+
 **Exit check (partial):** `interop/generate_fixtures.py` and
 `interop/verify_fixtures.py` both exit 0 with zero drift against the current
 tree. Full Step 8 exit (a real second implementation passing the same
 fixtures) remains open.
+
+**Update — second implementation started and passing.**
+`interop/reference-ts/` is a real, independent TypeScript/Node
+implementation (zero dependency on `atmanatic_research` or
+`validity_protocol` source) covering: error codes, RFC 3339 timestamps,
+canonical JSON + content-hash projection, and the six core validators
+(artifact lineage, evidence card, proposal envelope, review outcome,
+verification result, promotion record). Running `npm test` in that directory
+type-checks the implementation and runs it against the shared
+`interop/fixtures/manifest.json` corpus: **all 19 fixtures pass with identical
+verdicts and error codes to Python.** A dedicated cross-language canonical-hash
+parity fixture (`interop/fixtures/canonical_hash_parity.json`) was also added
+and independently verified: both implementations compute
+`b93d00dc2a8e78c892cd6a71457e14b6c88f37947d2932f9ecceeac1935d7c5b` for the same
+input record, checked by a test on each side
+(`tests/test_interop_fixtures.py::test_canonical_hash_parity_fixture_matches_python`
+and `interop/reference-ts/test/canonical.test.ts`). This is the first real
+piece of cross-language interoperability evidence for Draft 0.1, not an
+assertion.
+
+Not yet covered by the TypeScript side: source policy, evidence admission,
+orchestration/referee loops, lifecycle events, and graph analysis — all
+correctly out of scope for a first interoperability slice (source
+policy/evidence admission/orchestration are more implementation-specific
+and less "wire protocol"; graph analysis is explicitly non-core per
+section 18 of the draft). Per the earlier scoping discussion, a third
+implementation in a strictly-typed language (Rust/Go) remains noted as a
+future option if warranted by a real consumer or standards-body review, not
+scheduled now.
 
 ## 4a. Review and remediation pass (2026-09-18)
 

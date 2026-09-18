@@ -16,6 +16,9 @@ with the Python reference implementation on real inputs.
   an input artifact with its actual, verified verdict (`accept` or `reject`
   plus the exact error code) as produced by the Python reference validators.
 - `fixtures/manifest.json` — the full fixture index.
+- `fixtures/canonical_hash_parity.json` — a single record with a fixed
+  expected SHA-256; every implementation's canonical-hash function MUST
+  reproduce this exact digest.
 - `generate_fixtures.py` — regenerates every fixture from the live validators.
   It fails closed (refuses to write) if a case's declared expectation does not
   match what the validator actually does, so fixtures cannot silently drift
@@ -23,6 +26,10 @@ with the Python reference implementation on real inputs.
 - `verify_fixtures.py` — re-checks every committed fixture against current
   validator behavior; this is what CI should run to catch drift when a
   validator changes without regenerating fixtures.
+- `reference-ts/` — the second, independent implementation (TypeScript /
+  Node). It has no dependency on `atmanatic_research` or `validity_protocol`;
+  it only reads `fixtures/` and `fixtures/canonical_hash_parity.json`. See
+  `reference-ts/package.json` (`npm install && npm test`).
 
 ## What counts as interoperability evidence
 
@@ -36,6 +43,9 @@ for every fixture of that type, both implementations produce:
 Agreement on English error *messages* is explicitly not required — only the
 verdict and the machine-readable code are protocol API.
 
+As of this writing, `reference-ts/` reproduces all 19 fixture verdicts/codes
+and the canonical-hash-parity fixture exactly, verified by `npm test`.
+
 ## What this is not
 
 - Not a substitute for the normative prose in the protocol draft — the
@@ -43,7 +53,10 @@ verdict and the machine-readable code are protocol API.
 - Not evidence of interoperability by itself. A second implementation must
   actually load these fixtures and be run against them; until that exists,
   this corpus only proves the Python reference implementation is internally
-  consistent with itself (see `verify_fixtures.py`).
+  consistent with itself (see `verify_fixtures.py`). `reference-ts/` is that
+  second implementation for the fixture-verdict and canonical-hash claims;
+  it does not yet cover source policy, evidence admission, orchestration, or
+  lifecycle events, which remain Python-only.
 - Not a place for domain-specific, product-specific, or consumer-specific
   cases. Only protocol-core artifact types belong here.
 
@@ -57,3 +70,14 @@ python interop/verify_fixtures.py
 ```
 
 Both scripts exit non-zero on any drift or mismatch.
+
+## Running the TypeScript implementation
+
+```
+cd interop/reference-ts
+npm install
+npm test
+```
+
+`npm test` type-checks the implementation and runs it against every fixture
+plus the canonical-hash-parity check.
