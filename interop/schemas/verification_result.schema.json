@@ -1,0 +1,42 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://atmanatic.example/schemas/verification_result.schema.json",
+  "title": "Atmanatic Protocol 0.1 verification result",
+  "description": "Extends the common envelope. See ATMANATIC_PROTOCOL_0.1_DRAFT.md section 6.4.",
+  "allOf": [
+    { "$ref": "common_envelope.schema.json" },
+    {
+      "type": "object",
+      "required": [
+        "verifier_name",
+        "verifier_version",
+        "input_artifact_hash",
+        "specification_ids",
+        "status",
+        "environment_id"
+      ],
+      "properties": {
+        "verifier_name": { "type": "string", "minLength": 1 },
+        "verifier_version": { "type": "string", "minLength": 1 },
+        "input_artifact_hash": {
+          "type": "string",
+          "pattern": "^[0-9a-fA-F]{64}$"
+        },
+        "specification_ids": {
+          "type": "array",
+          "minItems": 1,
+          "items": { "type": "string", "minLength": 1 }
+        },
+        "status": {
+          "enum": ["verified", "failed", "timed_out", "not_evaluated"]
+        },
+        "diagnostics": {
+          "type": "array",
+          "items": { "type": "string" }
+        },
+        "resource_usage": { "type": "object" },
+        "environment_id": { "type": "string", "minLength": 1 }
+      }
+    }
+  ]
+}

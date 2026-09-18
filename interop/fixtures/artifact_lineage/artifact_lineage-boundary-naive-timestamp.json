@@ -1,0 +1,19 @@
+{
+  "artifact_type": "artifact_lineage",
+  "case_id": "artifact_lineage-boundary-naive-timestamp",
+  "description": "naive created_at (no UTC offset) must fail closed",
+  "expected": {
+    "error_code": "missing_or_invalid_field",
+    "verdict": "reject"
+  },
+  "input": {
+    "artifact_id": "artifact-1",
+    "content_hash": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+    "created_at": "2026-09-18T00:00:00",
+    "execution_authorized": false,
+    "parent_artifact_ids": [],
+    "producer": "research-agent",
+    "schema_version": 1
+  },
+  "schema": "common_envelope.schema.json"
+}

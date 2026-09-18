@@ -1,0 +1,11 @@
+{
+  "artifact_type": "evidence_card",
+  "case_id": "evidence_card-negative-empty",
+  "description": "empty object must fail closed",
+  "expected": {
+    "error_code": "missing_or_invalid_field",
+    "verdict": "reject"
+  },
+  "input": {},
+  "schema": "evidence_card.schema.json"
+}

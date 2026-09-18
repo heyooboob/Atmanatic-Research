@@ -1,0 +1,24 @@
+{
+  "artifact_type": "promotion_record",
+  "case_id": "promotion_record-positive-001",
+  "description": "explicit, scoped, non-authorizing promotion",
+  "expected": {
+    "verdict": "accept"
+  },
+  "input": {
+    "approved_artifact_hash": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+    "approved_at": "2026-09-18T01:00:00+00:00",
+    "approved_scope": "bounded evaluation environment",
+    "approver": "human-reviewer",
+    "artifact_id": "artifact-1",
+    "content_hash": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+    "created_at": "2026-09-18T00:00:00+00:00",
+    "execution_authorized": false,
+    "parent_artifact_ids": [],
+    "producer": "research-agent",
+    "rollback_target": "artifact-previous",
+    "schema_version": 1,
+    "status": "approved"
+  },
+  "schema": "promotion_record.schema.json"
+}

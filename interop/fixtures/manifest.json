@@ -1,0 +1,97 @@
+[
+  {
+    "artifact_type": "artifact_lineage",
+    "case_id": "artifact_lineage-boundary-naive-timestamp",
+    "path": "artifact_lineage/artifact_lineage-boundary-naive-timestamp.json"
+  },
+  {
+    "artifact_type": "artifact_lineage",
+    "case_id": "artifact_lineage-negative-authority",
+    "path": "artifact_lineage/artifact_lineage-negative-authority.json"
+  },
+  {
+    "artifact_type": "artifact_lineage",
+    "case_id": "artifact_lineage-negative-hash-format",
+    "path": "artifact_lineage/artifact_lineage-negative-hash-format.json"
+  },
+  {
+    "artifact_type": "artifact_lineage",
+    "case_id": "artifact_lineage-negative-version",
+    "path": "artifact_lineage/artifact_lineage-negative-version.json"
+  },
+  {
+    "artifact_type": "artifact_lineage",
+    "case_id": "artifact_lineage-positive-001",
+    "path": "artifact_lineage/artifact_lineage-positive-001.json"
+  },
+  {
+    "artifact_type": "evidence_card",
+    "case_id": "evidence_card-boundary-naive-timestamp",
+    "path": "evidence_card/evidence_card-boundary-naive-timestamp.json"
+  },
+  {
+    "artifact_type": "evidence_card",
+    "case_id": "evidence_card-negative-confidence-range",
+    "path": "evidence_card/evidence_card-negative-confidence-range.json"
+  },
+  {
+    "artifact_type": "evidence_card",
+    "case_id": "evidence_card-negative-empty",
+    "path": "evidence_card/evidence_card-negative-empty.json"
+  },
+  {
+    "artifact_type": "evidence_card",
+    "case_id": "evidence_card-positive-001",
+    "path": "evidence_card/evidence_card-positive-001.json"
+  },
+  {
+    "artifact_type": "promotion_record",
+    "case_id": "promotion_record-negative-status",
+    "path": "promotion_record/promotion_record-negative-status.json"
+  },
+  {
+    "artifact_type": "promotion_record",
+    "case_id": "promotion_record-positive-001",
+    "path": "promotion_record/promotion_record-positive-001.json"
+  },
+  {
+    "artifact_type": "proposal_envelope",
+    "case_id": "proposal_envelope-negative-authority",
+    "path": "proposal_envelope/proposal_envelope-negative-authority.json"
+  },
+  {
+    "artifact_type": "proposal_envelope",
+    "case_id": "proposal_envelope-negative-duplicate-evidence-refs",
+    "path": "proposal_envelope/proposal_envelope-negative-duplicate-evidence-refs.json"
+  },
+  {
+    "artifact_type": "proposal_envelope",
+    "case_id": "proposal_envelope-positive-001",
+    "path": "proposal_envelope/proposal_envelope-positive-001.json"
+  },
+  {
+    "artifact_type": "review_outcome",
+    "case_id": "review_outcome-negative-self-review",
+    "path": "review_outcome/review_outcome-negative-self-review.json"
+  },
+  {
+    "artifact_type": "review_outcome",
+    "case_id": "review_outcome-negative-unresolved",
+    "path": "review_outcome/review_outcome-negative-unresolved.json"
+  },
+  {
+    "artifact_type": "review_outcome",
+    "case_id": "review_outcome-positive-001",
+    "path": "review_outcome/review_outcome-positive-001.json"
+  },
+  {
+    "artifact_type": "verification_result",
+    "case_id": "verification_result-negative-status",
+    "path": "verification_result/verification_result-negative-status.json"
+  },
+  {
+    "artifact_type": "verification_result",
+    "case_id": "verification_result-positive-001",
+    "path": "verification_result/verification_result-positive-001.json"
+  }
+]

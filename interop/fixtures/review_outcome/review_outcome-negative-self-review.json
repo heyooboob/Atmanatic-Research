@@ -1,0 +1,26 @@
+{
+  "artifact_type": "review_outcome",
+  "case_id": "review_outcome-negative-self-review",
+  "description": "reviewer equal to producer must fail closed",
+  "expected": {
+    "error_code": "self_review_or_unresolved",
+    "verdict": "reject"
+  },
+  "input": {
+    "artifact_id": "artifact-1",
+    "challenge_findings": [
+      "tested"
+    ],
+    "content_hash": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+    "created_at": "2026-09-18T00:00:00+00:00",
+    "execution_authorized": false,
+    "outcome": "challenged_and_resolved",
+    "parent_artifact_ids": [],
+    "producer": "research-agent",
+    "resolution": "resolved",
+    "reviewer": "research-agent",
+    "schema_version": 1,
+    "subject_artifact_hash": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+  },
+  "schema": "review_outcome.schema.json"
+}

@@ -1,0 +1,22 @@
+{
+  "artifact_type": "evidence_card",
+  "case_id": "evidence_card-positive-001",
+  "description": "minimal valid evidence card",
+  "expected": {
+    "verdict": "accept"
+  },
+  "input": {
+    "agent": "agent",
+    "claim": "a claim",
+    "confidence": 0.5,
+    "content_hash": "hash",
+    "details": {},
+    "evidence_id": "e-1",
+    "observed_at": "2026-09-18T00:00:00+00:00",
+    "source_ids": [
+      "s-1"
+    ],
+    "status": "fresh"
+  },
+  "schema": "evidence_card.schema.json"
+}

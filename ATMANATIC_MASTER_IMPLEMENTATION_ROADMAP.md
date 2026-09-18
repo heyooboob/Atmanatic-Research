@@ -265,6 +265,37 @@ Only after Steps 1–7: seek a second, independently-written implementation
 (ideally a different language) and run bidirectional interoperability tests.
 This is the step that actually validates "protocol" versus "library."
 
+**Status: groundwork done (8.2/8.4); second implementation not started (8.3/8.5).**
+`interop/` is a new, non-packaged top-level directory (not shipped in the
+wheel — verified by `scripts/inspect_release.py`'s scope check) containing:
+
+- `interop/schemas/*.schema.json` — six normative JSON Schemas (draft 2020-12)
+  for the common envelope, evidence cards, proposal envelopes, review
+  outcomes, verification results, and promotion records — the Step 8.2 schema
+  freeze, expressed as literal schema files instead of prose.
+- `interop/generate_fixtures.py` — generates fixtures **from the live
+  validators** and refuses to write a fixture whose declared expectation
+  doesn't match what the validator actually returns (verdict and, for
+  rejections, the exact error code). This is the Step 8.4 fixture corpus;
+  19 fixtures across the 6 core types were generated and self-verified.
+- `interop/verify_fixtures.py` + `tests/test_interop_fixtures.py` — re-checks
+  every committed fixture against current validator behavior, catching drift
+  if a validator changes without regenerating fixtures. This is the Python
+  half of the Step 8.5 bidirectional harness.
+
+What remains, and is explicitly not attempted here: a second implementation in
+an independent codebase (TypeScript is the pragmatic first choice — see
+scoping discussion) that loads `interop/fixtures/manifest.json` and reproduces
+the same verdicts/codes; the interoperability report that comparison would
+produce; and the governance/IP/standards-body activity in the draft's section
+17, which is an organizational process, not an engineering task, and is not
+simulated here.
+
+**Exit check (partial):** `interop/generate_fixtures.py` and
+`interop/verify_fixtures.py` both exit 0 with zero drift against the current
+tree. Full Step 8 exit (a real second implementation passing the same
+fixtures) remains open.
+
 ## 4a. Review and remediation pass (2026-09-18)
 
 A review after Steps 1–7 found six overlooked or inadequately-applied gaps.

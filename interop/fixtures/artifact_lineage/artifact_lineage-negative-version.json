@@ -1,0 +1,19 @@
+{
+  "artifact_type": "artifact_lineage",
+  "case_id": "artifact_lineage-negative-version",
+  "description": "unsupported schema_version must fail closed",
+  "expected": {
+    "error_code": "unsupported_version",
+    "verdict": "reject"
+  },
+  "input": {
+    "artifact_id": "artifact-1",
+    "content_hash": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+    "created_at": "2026-09-18T00:00:00+00:00",
+    "execution_authorized": false,
+    "parent_artifact_ids": [],
+    "producer": "research-agent",
+    "schema_version": 99
+  },
+  "schema": "common_envelope.schema.json"
+}

@@ -1,0 +1,28 @@
+{
+  "artifact_type": "verification_result",
+  "case_id": "verification_result-positive-001",
+  "description": "minimal valid verification result",
+  "expected": {
+    "verdict": "accept"
+  },
+  "input": {
+    "artifact_id": "artifact-1",
+    "content_hash": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+    "created_at": "2026-09-18T00:00:00+00:00",
+    "diagnostics": [],
+    "environment_id": "ci",
+    "execution_authorized": false,
+    "input_artifact_hash": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+    "parent_artifact_ids": [],
+    "producer": "research-agent",
+    "resource_usage": {},
+    "schema_version": 1,
+    "specification_ids": [
+      "spec-1"
+    ],
+    "status": "verified",
+    "verifier_name": "deterministic-checker",
+    "verifier_version": "1.0"
+  },
+  "schema": "verification_result.schema.json"
+}

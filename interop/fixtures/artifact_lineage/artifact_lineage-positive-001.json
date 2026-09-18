@@ -1,0 +1,18 @@
+{
+  "artifact_type": "artifact_lineage",
+  "case_id": "artifact_lineage-positive-001",
+  "description": "minimal valid lineage envelope",
+  "expected": {
+    "verdict": "accept"
+  },
+  "input": {
+    "artifact_id": "artifact-1",
+    "content_hash": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+    "created_at": "2026-09-18T00:00:00+00:00",
+    "execution_authorized": false,
+    "parent_artifact_ids": [],
+    "producer": "research-agent",
+    "schema_version": 1
+  },
+  "schema": "common_envelope.schema.json"
+}

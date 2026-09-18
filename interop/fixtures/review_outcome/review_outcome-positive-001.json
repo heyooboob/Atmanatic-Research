@@ -1,0 +1,25 @@
+{
+  "artifact_type": "review_outcome",
+  "case_id": "review_outcome-positive-001",
+  "description": "resolved, independent review",
+  "expected": {
+    "verdict": "accept"
+  },
+  "input": {
+    "artifact_id": "artifact-1",
+    "challenge_findings": [
+      "tested the declared boundary"
+    ],
+    "content_hash": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+    "created_at": "2026-09-18T00:00:00+00:00",
+    "execution_authorized": false,
+    "outcome": "challenged_and_resolved",
+    "parent_artifact_ids": [],
+    "producer": "research-agent",
+    "resolution": "the boundary held for the declared fixture",
+    "reviewer": "independent-reviewer",
+    "schema_version": 1,
+    "subject_artifact_hash": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+  },
+  "schema": "review_outcome.schema.json"
+}

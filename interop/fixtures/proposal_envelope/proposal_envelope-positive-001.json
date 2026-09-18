@@ -1,0 +1,27 @@
+{
+  "artifact_type": "proposal_envelope",
+  "case_id": "proposal_envelope-positive-001",
+  "description": "minimal valid proposal envelope",
+  "expected": {
+    "verdict": "accept"
+  },
+  "input": {
+    "content_hash": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+    "created_at": "2026-09-18T00:00:00Z",
+    "evidence_refs": [
+      "e-1"
+    ],
+    "execution_authorized": false,
+    "parent_proposal_id": null,
+    "payload": {
+      "claim": "x"
+    },
+    "producer": "agent",
+    "proposal_id": "p-1",
+    "schema_version": 1,
+    "tool_versions": {
+      "agent": "1.0"
+    }
+  },
+  "schema": "proposal_envelope.schema.json"
+}
