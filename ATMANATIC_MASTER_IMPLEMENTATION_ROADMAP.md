@@ -66,6 +66,17 @@ already so risk is low, (c) what closes the biggest credibility gap first.
 
 ### Step 1 — Build `graph_analysis.py` exactly as specified
 
+**Status: done.** `atmanatic_research/graph_analysis.py` implements the three
+phases from the spec: `build_graph_snapshot()` (validated, canonically ordered,
+hashed nodes/edges), `personalized_pagerank()` (dangling-mass redistribution to
+seed, deterministic ordering, structured `not_converged` finding on timeout),
+and `build_graph_analysis_artifact()` / `validate_graph_analysis_result()` for
+the non-authorizing artifact. `tests/test_graph_analysis.py` covers order
+independence, unknown node/edge types, duplicate IDs, unresolved references,
+negative/non-finite weights, convergence and non-convergence, and artifact
+rejection of `execution_authorized: true`. Nothing in `evidence_admission.py`,
+`truth_review.py`, or `validity_governance.py` was touched.
+
 This is the lowest-risk, highest-leverage next unit of work: the spec in
 [eigenvector_graph_analysis.md](docs/architecture/eigenvector_graph_analysis.md)
 is already complete (data model, algorithms, determinism rules, artifact
@@ -79,7 +90,7 @@ without ever touching authority.
 
 **Exit check:** identical canonical input always produces an identical hash
 and rank order; disabling/ignoring graph analysis entirely does not change any
-governance test outcome.
+governance test outcome. Verified by `tests/test_graph_analysis.py`.
 
 ### Step 2 — Close the Protocol 0.1 "Proposed" gaps
 
@@ -114,6 +125,17 @@ for the same fixture artifact. Verified by `tests/test_canonical.py`.
 
 ### Step 3 — Phase 4: deterministic benchmark harness
 
+**Status: done.** `atmanatic_research/benchmark_harness.py` provides
+`BenchmarkCase` and `run_benchmark()`, which executes a fixed case corpus
+against named validators twice (raising if the two runs disagree), reports
+`false_accept_rate`, `false_reject_rate`, and `reproducible` as separate
+metrics — no composite score — and returns a record that passes the existing
+`validate_benchmark()` contract. `tests/test_benchmark_harness.py` proves a
+deliberately broken validator (one that accepts everything) fails the
+corresponding case rather than passing silently, which is the actual
+regression-gate behavior; wiring this into CI is still open since no CI
+configuration exists in this repository yet.
+
 1. Create a `benchmarks/` (or `tests/fixtures/`) directory with fixed,
    content-hashed fixtures: valid, invalid, boundary, and adversarial cases per
    module in [implementation_checklist.md](docs/architecture/implementation_checklist.md).
@@ -128,6 +150,19 @@ accepts a naive timestamp) fails the benchmark gate, not just unit tests.
 
 ### Step 4 — Phase 6: lifecycle event log + promotion workflow
 
+**Status: done.** `atmanatic_research/lifecycle_events.py` adds
+`validate_lifecycle_event()`, `record_transition()` (wraps any `ValidationResult`-returning
+transition callable — `advance()`, `advance_with_review()`, or `promote_packet()`
+— and always records the attempt, pass or fail), and `LifecycleEventLog`, an
+append-only JSON-lines store with `latest_status()` resolved by `created_at`
+rather than write order. `atmanatic_research/validity_governance.py` gained
+`promote_packet()`, which requires `awaiting_human_promotion`, a structurally
+valid `approved` promotion record, and a matching `approved_artifact_hash`
+before setting `PROMOTED` and retaining the promotion record on
+`packet.metadata`. `tests/test_lifecycle_events.py` proves rejected transitions
+always carry violations, accepted ones never do, and promotion cannot silently
+apply to the wrong artifact hash or the wrong packet state.
+
 1. Add an append-only transition-event log (prior state, target state, evidence
    set, actor, timestamp) that wraps `validity_governance.py`'s `advance()` /
    `advance_with_review()` instead of only mutating the in-memory packet.
@@ -140,9 +175,28 @@ accepts a naive timestamp) fails the benchmark gate, not just unit tests.
 
 **Exit check:** every promoted decision is traceable to artifact → review →
 verification → approver → scope → expiry → rollback, per the plan's Phase 6
-exit gate — reproduce that trace in a test, not just in prose.
+exit gate — reproduce that trace in a test, not just in prose. Reproduced by
+`test_successful_promotion_sets_level_and_retains_record`.
 
 ### Step 5 — Phase 5: first formal verification adapter (narrow scope)
+
+**Status: piloted, narrower than the original plan.**
+`atmanatic_research/verification_adapters.py` implements
+`check_validity_transition_table()` (checks the six-level ladder for
+unreachable levels and non-monotonic edges) and `run_validity_transition_pilot()`,
+which returns a `validate_verification_result()`-conformant record with
+`input_artifact_hash` derived from the declared ladder itself, so the result is
+reproducible from recorded input alone. `tests/test_verification_adapters.py`
+proves the real ladder verifies clean, and that a deliberately broken
+transition rule (injected via `can_advance_fn`) is flagged rather than silently
+passing.
+
+This pilot is intentionally narrower than the original Phase 5 scope: it has no
+untrusted input (the ladder is fixed, reviewed Python, not caller-supplied
+specifications or generated proofs), so it requires no sandbox, no resource
+limits, and no Lean toolchain. A verifier that accepts untrusted specifications
+or generated code still needs the sandboxed-subprocess work described below
+before it can be trusted — that remains unbuilt.
 
 1. Define the verification-result schema from the plan (verifier name/version,
    input hash, spec ID, status, diagnostics, resource usage, environment).
@@ -155,7 +209,9 @@ exit gate — reproduce that trace in a test, not just in prose.
    partial success.
 
 **Exit check:** a deliberately failing proof stays failed; result is
-reproducible from the recorded input and spec alone.
+reproducible from the recorded input and spec alone. Reproduced by
+`test_broken_reachability_is_flagged` / `test_broken_monotonicity_is_flagged`
+and `test_pilot_is_reproducible_in_verdict_and_diagnostics`.
 
 ### Step 6 — Phase 7: prove the repository split for real
 

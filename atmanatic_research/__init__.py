@@ -52,7 +52,7 @@ from .orchestration import (
     run_enveloped_referee_loop,
     run_referee_loop,
 )
-from .validity_governance import advance_with_review
+from .validity_governance import advance_with_review, promote_packet
 from .proposal_contracts import (
     PROPOSAL_SCHEMA_VERSION,
     ProposalContractError,
@@ -86,6 +86,30 @@ from .canonical import (
     compute_content_hash,
     project_for_hash,
     verify_content_hash,
+)
+from .graph_analysis import (
+    GRAPH_ANALYSIS_SCHEMA_VERSION,
+    GraphAnalysisError,
+    GraphAnalysisResult,
+    GraphEdge,
+    GraphNode,
+    GraphSnapshot,
+    build_graph_analysis_artifact,
+    build_graph_snapshot,
+    personalized_pagerank,
+    validate_graph_analysis_result,
+)
+from .benchmark_harness import BenchmarkCase, BenchmarkHarnessError, run_benchmark
+from .lifecycle_events import (
+    LIFECYCLE_EVENT_SCHEMA_VERSION,
+    LifecycleEventError,
+    LifecycleEventLog,
+    record_transition,
+    validate_lifecycle_event,
+)
+from .verification_adapters import (
+    check_validity_transition_table,
+    run_validity_transition_pilot,
 )
 from validity_protocol import (
     Observation,
@@ -156,6 +180,7 @@ __all__ = [
     "validate_proposal_envelope",
     "OrchestrationAuditEvent",
     "build_orchestration_audit_events",
+    "promote_packet",
     "ContractError",
     "ERROR_CODES",
     "EVIDENCE_CONFLICT",
@@ -177,6 +202,26 @@ __all__ = [
     "compute_content_hash",
     "project_for_hash",
     "verify_content_hash",
+    "GRAPH_ANALYSIS_SCHEMA_VERSION",
+    "GraphAnalysisError",
+    "GraphAnalysisResult",
+    "GraphEdge",
+    "GraphNode",
+    "GraphSnapshot",
+    "build_graph_analysis_artifact",
+    "build_graph_snapshot",
+    "personalized_pagerank",
+    "validate_graph_analysis_result",
+    "BenchmarkCase",
+    "BenchmarkHarnessError",
+    "run_benchmark",
+    "LIFECYCLE_EVENT_SCHEMA_VERSION",
+    "LifecycleEventError",
+    "LifecycleEventLog",
+    "record_transition",
+    "validate_lifecycle_event",
+    "check_validity_transition_table",
+    "run_validity_transition_pilot",
     "Observation",
     "PacketStore",
     "ValidationResult",
