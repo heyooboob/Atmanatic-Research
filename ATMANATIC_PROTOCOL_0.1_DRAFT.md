@@ -357,10 +357,19 @@ and exclusions.
 
 ### 7.1 Transition events
 
-**Proposed.** A production profile MUST represent every attempted transition as
+A production profile MUST represent every attempted transition as
 an immutable event containing the prior level, requested level, actor, time,
 input artifact hash, supporting artifact hashes, result, and violations. This
 replaces mutable in-memory state as the authoritative audit history.
+
+`atmanatic_research/lifecycle_events.py` implements this: `record_transition()`
+wraps any `ValidationResult`-returning transition (`advance()`,
+`advance_with_review()`, `promote_packet()`) and always records the attempt,
+pass or fail, as a `validate_lifecycle_event()`-conformant record containing
+`prior_level`, `requested_level`, `actor`, `created_at`, `packet_content_hash`,
+`supporting_artifact_hashes`, `result`, and `violations`. `LifecycleEventLog` is
+the append-only JSON-lines store. Rejected transitions MUST carry at least one
+violation and accepted ones MUST carry none; both fail closed otherwise.
 
 ### 7.2 Revalidation and revocation
 
@@ -370,6 +379,13 @@ environment drift, specification change, and discovered misconduct. Revocation
 MUST preserve history and MUST NOT delete the superseded artifact. Consumers
 MUST be able to determine the latest applicable status without trusting event
 arrival order alone.
+
+`LifecycleEventLog.latest_status()` already satisfies the last sentence: it
+resolves the current status per packet by `created_at`, not by write order.
+The remaining proposed work is a specific taxonomy of revocation reasons
+(evidence expiry, source withdrawal, policy change, model change, environment
+drift, specification change, misconduct) as distinct, named event types rather
+than a generic transition; that taxonomy does not exist yet.
 
 ## 8. Processing requirements
 
@@ -666,16 +682,16 @@ conformance.
 | Independent hash-linked review advancement | Implemented |
 | Provider-neutral referee loop | Implemented, non-core |
 | Canonical JSON wire representation | Implemented (`atmanatic_research/canonical.py`) |
-| Normative JSON Schemas | Not implemented |
+| Normative JSON Schemas | Implemented for six core types (`interop/schemas/*.schema.json`) |
 | Hash recomputation and verification | Implemented (`compute_content_hash`, `verify_content_hash`) |
 | Digital signatures and key lifecycle | Not implemented |
-| Transition, revocation, and transparency events | Not implemented |
+| Transition, revocation, and transparency events | Implemented for transitions (`atmanatic_research/lifecycle_events.py`); revocation-reason taxonomy not implemented |
 | Stable machine-readable errors | Implemented (`atmanatic_research/error_codes.py`) |
 | Strict RFC 3339 timestamp enforcement | Implemented (`atmanatic_research/timestamps.py`) |
 | Critical/non-critical extension handling | Implemented in `validate_artifact_lineage` and its dependents |
 | Extension and algorithm registries | Not implemented |
-| Independent non-Python implementation | Not implemented |
-| Cross-implementation conformance report | Not implemented |
+| Independent non-Python implementation | Implemented for six core validators plus canonical hashing (`interop/reference-ts`); source policy, evidence admission, and orchestration remain Python-only |
+| Cross-implementation conformance report | Fixture-level parity proven (19/19 fixtures plus hash-parity check); no formal written report yet |
 | External standards-body adoption | Not initiated |
 
 ## 20. Draft 0.1 exit criteria
