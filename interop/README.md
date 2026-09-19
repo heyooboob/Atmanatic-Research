@@ -7,6 +7,9 @@ Step 8. It is not part of the `atmanatic-research` package and is not shipped
 in the wheel; it exists to let an independent implementation prove it agrees
 with the Python reference implementation on real inputs.
 
+See [CONFORMANCE_REVIEW.md](CONFORMANCE_REVIEW.md) for the publication index
+and the independent-review procedure.
+
 ## Contents
 
 - `schemas/` — normative JSON Schemas (draft 2020-12) for the protocol core

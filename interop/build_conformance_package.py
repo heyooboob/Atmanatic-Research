@@ -16,6 +16,7 @@ PACKAGE_ROOT = "atmanatic-protocol-0.1-conformance"
 
 STATIC_FILES = (
     "ATMANATIC_PROTOCOL_0.1_DRAFT.md",
+    "interop/CONFORMANCE_REVIEW.md",
     "atmanatic_research/canonical.py",
     "atmanatic_research/error_codes.py",
     "atmanatic_research/timestamps.py",
