@@ -18,16 +18,16 @@ jobs:
       - uses: actions/setup-python@v5
         with:
           python-version: ${{ matrix.python-version }}
-      - name: Install build tooling
-        run: python -m pip install --upgrade pip setuptools
+      - name: Install build tooling and signing extra
+        run: python -m pip install --upgrade pip setuptools && python -m pip install .[signing]
       - name: Run test suite
         run: python -m unittest discover -s tests -q
       - name: Prove the repository-split acceptance test
         run: python scripts/verify_repository_split.py
       - name: Inspect the release wheel
         run: python scripts/inspect_release.py
-      - name: Install the optional signing extra and pip-audit
-        run: python -m pip install .[signing] pip-audit
+      - name: Install pip-audit
+        run: python -m pip install pip-audit
       - name: Scan dependencies for known vulnerabilities
         run: python scripts/scan_dependencies.py
 
