@@ -14,6 +14,10 @@ class TextProcessingTests(unittest.TestCase):
         variants = ["research record", "Research-Record", " research_record\u00a0"]
         self.assertEqual({text_processing.normalize_text(value) for value in variants}, {"research_record"})
 
+    def test_normalization_canonicalizes_xrpl_aliases(self):
+        variants = ["xrp ledger", "XRP-Ledger", " XRPL\u00a0"]
+        self.assertEqual({text_processing.normalize_text(value) for value in variants}, {"xrpl"})
+
     def test_tokenization_preserves_domain_terms_ids_and_tickers(self):
         tokens = text_processing.tokenize("evidence_id review_status proposal_123 uncertainty statement")
         self.assertEqual(tokens, ["evidence_id", "review_status", "proposal_123", "uncertainty", "statement"])

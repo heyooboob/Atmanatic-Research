@@ -42,10 +42,10 @@ Protocol 0.1 conformance archive is available from CI as
 `atmanatic-protocol-0.1-conformance.zip` for consumers implementing the
 protocol in another language.
 
-The repository is currently private while the first public release is being
-prepared. See [CONTRIBUTING.md](CONTRIBUTING.md) for local checks and protocol
-change expectations, and [SECURITY.md](SECURITY.md) for private vulnerability
-reporting.
+The source repository is now public. Install the released package from PyPI
+with `python -m pip install atmanatic-research`, and see
+[CONTRIBUTING.md](CONTRIBUTING.md) for local checks and protocol change
+expectations, and [SECURITY.md](SECURITY.md) for vulnerability reporting.
 
 ## First Validation
 

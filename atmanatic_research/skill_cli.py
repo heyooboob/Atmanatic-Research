@@ -24,6 +24,12 @@ def _build_parser() -> argparse.ArgumentParser:
     create_parser.add_argument("--register-path", default="skills.json")
     create_parser.add_argument("--model-family", default="general")
 
+    list_parser = subparsers.add_parser("list", help="list registered skill manifests")
+    list_parser.add_argument("--registry-path", default="skills.json")
+
+    status_parser = subparsers.add_parser("status", help="alias for list")
+    status_parser.add_argument("--registry-path", default="skills.json")
+
     audit_parser = subparsers.add_parser("audit", help="audit transcript activity against a registered skill")
     audit_parser.add_argument("--skill-name", required=True)
     audit_parser.add_argument("--registry-path", default="skills.json")
@@ -32,6 +38,7 @@ def _build_parser() -> argparse.ArgumentParser:
     audit_parser.add_argument("--observed-action", action="append", default=[])
     audit_parser.add_argument("--output-path", action="append", default=[])
     audit_parser.add_argument("--git-ref", default="main")
+    audit_parser.add_argument("--json", action="store_true", help="emit structured JSON output")
     return parser
 
 
@@ -57,6 +64,12 @@ def _load_manifest(registry_path: str, skill_name: str) -> SkillManifest:
 def main(argv: list[str] | None = None) -> int:
     parser = _build_parser()
     args = parser.parse_args(argv)
+
+    if args.command in {"list", "status"}:
+        registry = SkillRegistry(Path(args.registry_path))
+        payload = registry.list()
+        print(json.dumps(payload, indent=2, sort_keys=True))
+        return 0
 
     if args.command == "create":
         manifest = SkillManifest(
@@ -93,7 +106,7 @@ def main(argv: list[str] | None = None) -> int:
                 output_paths=tuple(args.output_path),
             )
             audit = SkillAuditLoop().audit(manifest, args.transcript, observed_actions=tuple(args.observed_action))
-            print(json.dumps({
+            payload = {
                 "skill_name": manifest.name,
                 "version": manifest.version,
                 "aligned": audit.aligned,
@@ -102,7 +115,11 @@ def main(argv: list[str] | None = None) -> int:
                 "mismatches": list(audit.mismatches),
                 "run_dir": str(Path(args.store_root) / "skills" / manifest.name),
                 "artifact": str(record.output_paths[0]) if record.output_paths else "",
-            }, indent=2, sort_keys=True))
+            }
+            if args.json:
+                print(json.dumps(payload, indent=2, sort_keys=True))
+            else:
+                print(json.dumps(payload, indent=2, sort_keys=True))
             return 0
         except Exception as exc:  # pragma: no cover - CLI output path
             print(json.dumps({"error": str(exc)}), file=None)

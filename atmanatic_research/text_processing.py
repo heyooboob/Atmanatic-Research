@@ -25,6 +25,7 @@ KNOWN_ENTITIES = {
 
 CANONICAL_ALIASES = (
     (re.compile(r"\bresearch[\s_-]+record\b", re.IGNORECASE), "research_record"),
+    (re.compile(r"\bxrp[\s_-]+ledger\b", re.IGNORECASE), "xrpl"),
 )
 
 

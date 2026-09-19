@@ -188,16 +188,18 @@ class SkillRunStore:
         with artifact_path.open("w", encoding="utf-8") as handle:
             json.dump(artifact, handle, indent=2, sort_keys=True)
 
-    def _load_index(self) -> dict[str, list[dict[str, object]]]:
+    def _load_index(self) -> dict[str, Any]:
         if not self.index_path.exists():
-            return {}
+            return {"skills": {}}
         with self.index_path.open("r", encoding="utf-8") as handle:
             data = json.load(handle)
         if not isinstance(data, dict):
-            return {}
+            return {"skills": {}}
+        if "skills" not in data:
+            data["skills"] = {}
         return data
 
-    def _write_index(self, payload: dict[str, list[dict[str, object]]]) -> None:
+    def _write_index(self, payload: dict[str, Any]) -> None:
         with self.index_path.open("w", encoding="utf-8") as handle:
             json.dump(payload, handle, indent=2, sort_keys=True)
 
@@ -242,7 +244,7 @@ class SkillRunStore:
         self._write_artifact_file(run_dir, manifest, record)
 
         payload = self._load_index()
-        payload.setdefault(manifest.name, []).append({
+        entry = {
             "skill_version": record.skill_version,
             "git_ref": record.git_ref,
             "transcript": record.transcript,
@@ -255,7 +257,12 @@ class SkillRunStore:
             },
             "run_dir": str(run_dir),
             "created_at": self._timestamp(),
-        })
+        }
+        payload.setdefault(manifest.name, [])
+        payload[manifest.name].append(entry)
+        payload.setdefault("skills", {})
+        payload["skills"].setdefault(manifest.name, [])
+        payload["skills"][manifest.name].append(entry)
         self._write_index(payload)
         return record
 

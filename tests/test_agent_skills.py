@@ -1,7 +1,9 @@
+import io
 import json
 import os
 import tempfile
 import unittest
+from contextlib import redirect_stdout
 
 from atmanatic_research import (
     SkillAuditLoop,
@@ -219,3 +221,64 @@ class AgentSkillLifecycleTests(unittest.TestCase):
             run_dir = os.path.dirname(record.output_paths[0])
             self.assertIn("skills", run_dir)
             self.assertTrue(os.path.exists(os.path.join(os.path.dirname(run_dir), "artifact.json")))
+
+    def test_list_and_json_audit_modes_work(self):
+        with tempfile.TemporaryDirectory() as tmpdir:
+            registry_path = os.path.join(tmpdir, "skills.json")
+            store_root = os.path.join(tmpdir, "skill-store")
+            skill_cli_main([
+                "create",
+                "--name",
+                "quality-review",
+                "--purpose",
+                "Validate output quality before release.",
+                "--version",
+                "0.3.0",
+                "--output-dir",
+                "runs",
+                "--output-dir",
+                "logs",
+                "--register-path",
+                registry_path,
+                "--expected-action",
+                "inspect evidence",
+                "--expected-action",
+                "record finding",
+                "--model-family",
+                "gpt-4o-mini",
+            ])
+
+            list_buffer = io.StringIO()
+            with redirect_stdout(list_buffer):
+                status = skill_cli_main(["list", "--registry-path", registry_path])
+            self.assertEqual(status, 0)
+            payload = json.loads(list_buffer.getvalue())
+            self.assertIn("quality-review", payload)
+
+            audit_buffer = io.StringIO()
+            with redirect_stdout(audit_buffer):
+                status = skill_cli_main([
+                    "audit",
+                    "--skill-name",
+                    "quality-review",
+                    "--registry-path",
+                    registry_path,
+                    "--store-root",
+                    store_root,
+                    "--transcript",
+                    "The agent inspected evidence and recorded the finding.",
+                    "--observed-action",
+                    "inspect evidence",
+                    "--observed-action",
+                    "record finding",
+                    "--json",
+                ])
+            self.assertEqual(status, 0)
+            audit_payload = json.loads(audit_buffer.getvalue())
+            self.assertTrue(audit_payload["aligned"])
+            self.assertEqual(audit_payload["missing_actions"], [])
+
+            with open(os.path.join(store_root, "skill_runs.json"), "r", encoding="utf-8") as handle:
+                run_index = json.load(handle)
+            self.assertIn("skills", run_index)
+            self.assertIn("quality-review", run_index["skills"])

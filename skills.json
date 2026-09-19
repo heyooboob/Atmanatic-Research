@@ -1,0 +1,16 @@
+{
+  "quality-review": {
+    "audit_policy": "transcript_alignment",
+    "expected_actions": [],
+    "git_ref": "main",
+    "model_profile": "gpt-4o-mini",
+    "name": "quality-review",
+    "output_directories": [
+      "runs",
+      "logs"
+    ],
+    "purpose": "Validate output quality before release.",
+    "repository": null,
+    "version": "0.1.0"
+  }
+}
