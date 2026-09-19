@@ -15,11 +15,13 @@ from validity_protocol import (
     advance,
     validate_packet,
 )
+from validity_protocol.codes import VIOLATION_CODES
 from atmanatic_research import (
     ValidityLevel as AtmanaticValidityLevel,
     ValidityPacket as AtmanaticValidityPacket,
     validate_packet as atmanatic_validate_packet,
 )
+from atmanatic_research.error_codes import ERROR_CODES
 
 
 def _make_packet(**overrides) -> ValidityPacket:
@@ -52,12 +54,16 @@ class ValidatePacketTests(unittest.TestCase):
         packet = _make_packet()
         result = validate_packet(packet)
         self.assertTrue(result.passed, result.violations)
+        self.assertEqual(result.violations, [])
+        self.assertEqual(result.violation_codes, [])
 
     def test_missing_evidence_refs_fails(self):
         packet = _make_packet(evidence_refs=[])
         result = validate_packet(packet)
         self.assertFalse(result.passed)
         self.assertIn("no evidence references / provenance recorded", result.violations)
+        index = result.violations.index("no evidence references / provenance recorded")
+        self.assertEqual(result.violation_codes[index], "missing_or_invalid_field")
 
     def test_expired_packet_fails(self):
         now = datetime.now(timezone.utc)
@@ -65,23 +71,37 @@ class ValidatePacketTests(unittest.TestCase):
         result = validate_packet(packet, now=now)
         self.assertFalse(result.passed)
         self.assertIn("packet has expired and requires revalidation", result.violations)
+        index = result.violations.index("packet has expired and requires revalidation")
+        self.assertEqual(result.violation_codes[index], "expired_or_revoked")
 
     def test_independently_verified_requires_reviewer_distinct_from_author(self):
         packet = _make_packet(author="agent_a", reviewer="agent_a", challenge_outcome="survived")
         result = validate_packet(packet, level=ValidityLevel.INDEPENDENTLY_VERIFIED)
         self.assertFalse(result.passed)
         self.assertIn("claim author cannot be its own independent reviewer", result.violations)
+        index = result.violations.index("claim author cannot be its own independent reviewer")
+        self.assertEqual(result.violation_codes[index], "self_review_or_unresolved")
 
     def test_independently_verified_passes_with_distinct_reviewer(self):
         packet = _make_packet(author="agent_a", reviewer="agent_b", challenge_outcome="survived falsification attempt")
         result = validate_packet(packet, level=ValidityLevel.INDEPENDENTLY_VERIFIED)
         self.assertTrue(result.passed, result.violations)
+        self.assertEqual(result.violation_codes, [])
 
     def test_promoted_can_never_pass_this_validator(self):
         packet = _make_packet(author="agent_a", reviewer="agent_b", challenge_outcome="survived")
         result = validate_packet(packet, level=ValidityLevel.PROMOTED)
         self.assertFalse(result.passed)
         self.assertTrue(any("explicit human-approval" in violation for violation in result.violations))
+        self.assertIn("prohibited_authority_claim", result.violation_codes)
+
+    def test_every_violation_pairs_with_a_registered_code(self):
+        packet = _make_packet(claim="", scope="", evidence_refs=[])
+        result = validate_packet(packet, level=ValidityLevel.PROMOTED)
+        self.assertFalse(result.passed)
+        self.assertEqual(len(result.violations), len(result.violation_codes))
+        for code in result.violation_codes:
+            self.assertIn(code, VIOLATION_CODES)
 
 
 class AdvanceTests(unittest.TestCase):
@@ -89,12 +109,14 @@ class AdvanceTests(unittest.TestCase):
         packet = _make_packet()
         result = advance(packet, ValidityLevel.TESTED)
         self.assertTrue(result.passed, result.violations)
+        self.assertEqual(result.violation_codes, [])
         self.assertEqual(packet.level, ValidityLevel.TESTED)
 
     def test_advance_rejects_skipping_levels(self):
         packet = _make_packet()
         result = advance(packet, ValidityLevel.INDEPENDENTLY_VERIFIED)
         self.assertFalse(result.passed)
+        self.assertEqual(result.violation_codes, ["invalid_state_transition"])
         self.assertEqual(packet.level, ValidityLevel.OBSERVED)
 
     def test_advance_never_grants_promoted(self):
@@ -109,7 +131,16 @@ class AdvanceTests(unittest.TestCase):
             self.assertTrue(result.passed, result.violations)
         result = advance(packet, ValidityLevel.PROMOTED)
         self.assertFalse(result.passed)
+        self.assertEqual(result.violation_codes, ["prohibited_authority_claim"])
         self.assertEqual(packet.level, ValidityLevel.AWAITING_HUMAN_PROMOTION)
+
+
+class ViolationCodeRegistryTests(unittest.TestCase):
+    def test_shared_codes_match_atmanatic_error_code_registry(self):
+        # validity_protocol.codes duplicates values (not imports) from
+        # atmanatic_research.error_codes to avoid a circular dependency; this
+        # guards the two registries against silent drift.
+        self.assertTrue(VIOLATION_CODES.issubset(ERROR_CODES))
 
 
 class PacketStoreTests(unittest.TestCase):

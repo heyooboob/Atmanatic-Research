@@ -22,8 +22,8 @@ The goal is to document the system in a way that is:
 See [ATMANATIC_MASTER_IMPLEMENTATION_ROADMAP.md](../../ATMANATIC_MASTER_IMPLEMENTATION_ROADMAP.md)
 for the narrative, step-by-step implementation history; this table is the
 per-file snapshot, ordered per the sequencing note in
-[implementation_checklist.md](implementation_checklist.md). All 24 modules
-exist and are covered by passing tests as of 2026-09-18 (171 Python tests, 26
+[implementation_checklist.md](implementation_checklist.md). All 26 modules
+exist and are covered by passing tests as of 2026-09-18 (227 Python tests, 26
 TypeScript tests); "Notes" below records depth/caveats, not existence.
 
 | # | Module | Status | Notes |
@@ -51,7 +51,9 @@ TypeScript tests); "Notes" below records depth/caveats, not existence.
 | 21 | `atmanatic_research/text_processing.py` | Implemented | |
 | 22 | `atmanatic_research/graph_analysis.py` | Implemented | not wired into any consumer by design; governing isolation enforced |
 | 23 | `atmanatic_research/verification_adapters.py` | Implemented, narrow pilot | no sandbox needed yet — checks fixed code, not untrusted input |
-| 24 | `atmanatic_research/benchmark_harness.py` | Implemented | committed corpus covers 6 of 24 modules; expansion tracked in the roadmap |
+| 24 | `atmanatic_research/benchmark_harness.py` | Implemented | committed corpus has 24 entries; primitive and storage modules retain dedicated tests |
+| 25 | `atmanatic_research/sandbox_runner.py` | Implemented | wall-clock timeout always enforced; CPU/memory limits best-effort on POSIX only; no OS-level network denial; nothing calls it with untrusted input yet |
+| 26 | `atmanatic_research/signing.py` | Implemented, one algorithm | `ed25519` only; requires the optional `cryptography` extra; key rotation workflow not built |
 
 Cross-cutting, not in the per-module list above:
 
@@ -60,9 +62,10 @@ Cross-cutting, not in the per-module list above:
 | Second implementation | Implemented, partial scope | `interop/reference-ts` — 6 core contracts + canonical hashing; not source policy, evidence admission, or orchestration |
 | Interoperability report | Implemented | `interop/generate_report.py` → `interop/INTEROPERABILITY_REPORT.md`, currently 19/19 fixtures agree |
 | CI | Implemented | `.github/workflows/ci.yml` — Python matrix, TypeScript, interoperability report |
-| Formal verifier sandbox | Not implemented | required before any adapter accepts untrusted specifications/code |
-| Signing / key lifecycle | Not implemented | protocol draft §12 |
-| Extension/algorithm registries | Not implemented | protocol draft §16 |
+| Formal verifier sandbox | Implemented | `atmanatic_research/sandbox_runner.py`; no adapter calls it with untrusted specifications/code yet |
+| Signing / key lifecycle | Implemented, one algorithm | `atmanatic_research/signing.py`, protocol draft §12; key rotation workflow open |
+| Extension/algorithm registries | Partially implemented | critical/non-critical artifact extensions in `artifact_contracts.py`; `SIGNING_ALGORITHMS` in `signing.py`; no unified cross-cutting registry module (protocol draft §16) |
+| Release operations (signing in CI, dependency scanning, tag checks, rollback) | Implemented | `scripts/check_release_tag.py`, `scripts/scan_dependencies.py`, `scripts/sign_release.py`, `scripts/verify_release_manifest.py`, `scripts/generate_release_key.py`, the `release` CI job, and [RELEASE_RUNBOOK.md](../../RELEASE_RUNBOOK.md) |
 
 ## Core principle
 

@@ -10,6 +10,13 @@ from __future__ import annotations
 from dataclasses import dataclass, field
 from datetime import datetime, timezone
 
+from .codes import (
+    EXPIRED_OR_REVOKED,
+    INVALID_STATE_TRANSITION,
+    MISSING_OR_INVALID_FIELD,
+    PROHIBITED_AUTHORITY_CLAIM,
+    SELF_REVIEW_OR_UNRESOLVED,
+)
 from .levels import ValidityLevel, can_advance
 from .packet import ValidityPacket
 
@@ -24,6 +31,13 @@ _REQUIRES_REVIEW = {
 class ValidationResult:
     passed: bool
     violations: list[str] = field(default_factory=list)
+    violation_codes: list[str] = field(default_factory=list)
+
+    def __post_init__(self) -> None:
+        if len(self.violation_codes) != len(self.violations):
+            raise ValueError("violation_codes must pair one-to-one with violations")
+        if self.passed and self.violations:
+            raise ValueError("a passed result cannot carry violations")
 
 
 def validate_packet(
@@ -37,43 +51,49 @@ def validate_packet(
     now = now or datetime.now(timezone.utc)
     level = level or packet.level
     violations: list[str] = []
+    codes: list[str] = []
+
+    def _fail(message: str, code: str) -> None:
+        violations.append(message)
+        codes.append(code)
 
     if not packet.claim.strip():
-        violations.append("claim is empty")
+        _fail("claim is empty", MISSING_OR_INVALID_FIELD)
     if not packet.scope.strip():
-        violations.append("scope is missing")
+        _fail("scope is missing", MISSING_OR_INVALID_FIELD)
     if not packet.observations:
-        violations.append("no direct observations recorded")
+        _fail("no direct observations recorded", MISSING_OR_INVALID_FIELD)
     if not packet.evidence_refs:
-        violations.append("no evidence references / provenance recorded")
+        _fail("no evidence references / provenance recorded", MISSING_OR_INVALID_FIELD)
     if not packet.falsifier.strip():
-        violations.append("falsification condition is missing")
+        _fail("falsification condition is missing", MISSING_OR_INVALID_FIELD)
     if not packet.counterclaim.strip():
-        violations.append("counterclaim is missing")
+        _fail("counterclaim is missing", MISSING_OR_INVALID_FIELD)
     if not packet.uncertainty.strip():
-        violations.append("uncertainty statement is missing")
+        _fail("uncertainty statement is missing", MISSING_OR_INVALID_FIELD)
     if not packet.rollback_path.strip():
-        violations.append("rollback path is missing")
+        _fail("rollback path is missing", MISSING_OR_INVALID_FIELD)
     if not packet.revalidation_policy.strip():
-        violations.append("revalidation policy is missing")
+        _fail("revalidation policy is missing", MISSING_OR_INVALID_FIELD)
     if packet.is_expired(now=now):
-        violations.append("packet has expired and requires revalidation")
+        _fail("packet has expired and requires revalidation", EXPIRED_OR_REVOKED)
 
     if level in _REQUIRES_REVIEW:
         if not packet.reviewer:
-            violations.append("independent reviewer is required at this validity level")
+            _fail("independent reviewer is required at this validity level", SELF_REVIEW_OR_UNRESOLVED)
         elif packet.reviewer.strip().lower() == packet.author.strip().lower():
-            violations.append("claim author cannot be its own independent reviewer")
+            _fail("claim author cannot be its own independent reviewer", SELF_REVIEW_OR_UNRESOLVED)
         if not packet.challenge_outcome:
-            violations.append("resolved challenge outcome is required at this validity level")
+            _fail("resolved challenge outcome is required at this validity level", SELF_REVIEW_OR_UNRESOLVED)
 
     if level == ValidityLevel.PROMOTED:
-        violations.append(
+        _fail(
             "PROMOTED cannot be granted by this validator; it requires a separate, "
-            "explicit human-approval record outside this library"
+            "explicit human-approval record outside this library",
+            PROHIBITED_AUTHORITY_CLAIM,
         )
 
-    return ValidationResult(passed=not violations, violations=violations)
+    return ValidationResult(passed=not violations, violations=violations, violation_codes=codes)
 
 
 def advance(packet: ValidityPacket, target: ValidityLevel, *, now: datetime | None = None) -> ValidationResult:
@@ -85,11 +105,13 @@ def advance(packet: ValidityPacket, target: ValidityLevel, *, now: datetime | No
                 "PROMOTED cannot be granted by this validator; it requires a separate, "
                 "explicit human-approval record outside this library"
             ],
+            violation_codes=[PROHIBITED_AUTHORITY_CLAIM],
         )
     if not can_advance(packet.level, target):
         return ValidationResult(
             passed=False,
             violations=[f"cannot advance from {packet.level.value} to {target.value} out of order"],
+            violation_codes=[INVALID_STATE_TRANSITION],
         )
     result = validate_packet(packet, level=target, now=now)
     if result.passed:

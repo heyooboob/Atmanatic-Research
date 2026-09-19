@@ -76,6 +76,7 @@ class RecordTransitionTests(unittest.TestCase):
         self.assertEqual(event["prior_level"], "observed")
         self.assertEqual(event["requested_level"], "tested")
         self.assertEqual(event["violations"], [])
+        self.assertEqual(event["violation_codes"], [])
 
     def test_rejected_transition_is_recorded_with_violations(self):
         packet = _packet()
@@ -89,6 +90,8 @@ class RecordTransitionTests(unittest.TestCase):
         self.assertFalse(result.passed)
         self.assertEqual(event["result"], "rejected")
         self.assertTrue(event["violations"])
+        self.assertEqual(len(event["violation_codes"]), len(event["violations"]))
+        self.assertEqual(event["violation_codes"], ["invalid_state_transition"])
 
 
 class ValidateLifecycleEventTests(unittest.TestCase):
@@ -104,6 +107,7 @@ class ValidateLifecycleEventTests(unittest.TestCase):
             "supporting_artifact_hashes": [],
             "result": "accepted",
             "violations": [],
+            "violation_codes": [],
         }
         event.update(overrides)
         return event
@@ -115,6 +119,24 @@ class ValidateLifecycleEventTests(unittest.TestCase):
     def test_rejected_event_without_violations_is_rejected(self):
         with self.assertRaises(LifecycleEventError):
             validate_lifecycle_event(self._valid_event(result="rejected"))
+
+    def test_accepted_event_with_violation_codes_is_rejected(self):
+        with self.assertRaises(LifecycleEventError):
+            validate_lifecycle_event(self._valid_event(violation_codes=["missing_or_invalid_field"]))
+
+    def test_mismatched_violation_codes_length_is_rejected(self):
+        with self.assertRaises(LifecycleEventError):
+            validate_lifecycle_event(
+                self._valid_event(
+                    result="rejected",
+                    violations=["a", "b"],
+                    violation_codes=["missing_or_invalid_field"],
+                )
+            )
+
+    def test_rejected_event_without_violation_codes_is_accepted_for_backward_compatibility(self):
+        event = self._valid_event(result="rejected", violations=["legacy violation"], violation_codes=[])
+        self.assertEqual(validate_lifecycle_event(event), event)
 
     def test_unknown_level_is_rejected(self):
         with self.assertRaises(LifecycleEventError):
@@ -140,6 +162,7 @@ class LifecycleEventLogTests(unittest.TestCase):
                 "supporting_artifact_hashes": [],
                 "result": "accepted",
                 "violations": [],
+                "violation_codes": [],
             }
             log.append(event)
             self.assertEqual(log.read_all(), [event])
@@ -158,6 +181,7 @@ class LifecycleEventLogTests(unittest.TestCase):
                 "supporting_artifact_hashes": [],
                 "result": "accepted",
                 "violations": [],
+                "violation_codes": [],
             }
             earlier = {**later, "event_id": "event-1", "created_at": "2026-09-17T00:00:00+00:00"}
             log.append(later)
@@ -172,16 +196,19 @@ class PromotePacketTests(unittest.TestCase):
         result = promote_packet(packet, _promotion_record())
         self.assertFalse(result.passed)
         self.assertIn("awaiting_human_promotion", result.violations[0])
+        self.assertEqual(result.violation_codes, ["invalid_state_transition"])
 
     def test_promotion_requires_matching_artifact_hash(self):
         packet = _packet(level=ValidityLevel.AWAITING_HUMAN_PROMOTION)
         result = promote_packet(packet, _promotion_record(approved_artifact_hash="c" * 64))
         self.assertFalse(result.passed)
+        self.assertEqual(result.violation_codes, ["hash_mismatch"])
 
     def test_successful_promotion_sets_level_and_retains_record(self):
         packet = _packet(level=ValidityLevel.AWAITING_HUMAN_PROMOTION)
         result = promote_packet(packet, _promotion_record())
         self.assertTrue(result.passed, result.violations)
+        self.assertEqual(result.violation_codes, [])
         self.assertEqual(packet.level, ValidityLevel.PROMOTED)
         self.assertEqual(packet.metadata["promotion_record"]["approver"], "human-reviewer")
 

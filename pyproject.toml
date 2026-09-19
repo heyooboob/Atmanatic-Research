@@ -9,6 +9,9 @@ description = "Domain-neutral research, evidence, and validity contracts owned b
 requires-python = ">=3.11"
 dependencies = []
 
+[project.optional-dependencies]
+signing = ["cryptography>=42"]
+
 [tool.setuptools.packages.find]
 where = ["."]
 include = ["atmanatic_research*", "validity_protocol*"]

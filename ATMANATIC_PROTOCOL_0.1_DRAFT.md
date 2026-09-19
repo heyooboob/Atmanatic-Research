@@ -500,13 +500,24 @@ public validator exception now derives from it and raises with an explicit
 code: `ArtifactContractError`, `ProposalContractError`, `EvidenceContractError`,
 `SourcePolicyError`, `OrchestrationError`, `IntelligenceContractError`,
 `TruthReviewError`, `ValidityStandardError`, `EvidenceAdmissionError`,
-`GraphAnalysisError`, and `LifecycleEventError`. The validity-transition
-`ValidationResult` violation list (in `validity_protocol.validator`) does not
-yet carry structured codes, since it aggregates string reasons rather than
-raising typed exceptions; that remains open work tracked in the master
-implementation roadmap.
+`GraphAnalysisError`, and `LifecycleEventError`. The validity-transition path
+aggregates string reasons rather than raising typed exceptions, so it carries
+its codes differently: `ValidationResult` (in `validity_protocol.validator`)
+now has a `violation_codes` field that pairs one-to-one, in order, with
+`violations`; a passed result always has both lists empty, and a failed
+result always has both non-empty. `validity_protocol/codes.py` defines the
+five codes reachable from packet validation and advancement
+(`missing_or_invalid_field`, `expired_or_revoked`,
+`self_review_or_unresolved`, `invalid_state_transition`,
+`prohibited_authority_claim`) with the same string values as the
+corresponding entries in `atmanatic_research/error_codes.py`, duplicated
+rather than imported so the standalone `validity_protocol` package keeps zero
+dependency on downstream products. `atmanatic_research.lifecycle_events`
+persists `violation_codes` alongside `violations` on every recorded
+transition event (accepting older logs that predate the field).
 
 ## 12. Security considerations
+
 
 Protocol conformance is not equivalent to system security. Implementers MUST
 consider at least:
@@ -522,16 +533,44 @@ consider at least:
 - credential leakage through artifacts or diagnostics;
 - unauthorized interpretation of research artifacts as action approval.
 
-**Proposed.** Signed profiles MUST bind the canonical artifact bytes, protocol
+**Partially implemented.** Signed profiles MUST bind the canonical artifact bytes, protocol
 version, artifact type, producer identity, signature algorithm, and key
 identifier. They MUST define key rotation, compromise, revocation, and
 verification-time semantics. Algorithms MUST be registry-controlled and permit
 cryptographic agility.
 
+`atmanatic_research/signing.py` implements this for one algorithm today:
+`sign_record()`/`verify_record_signature()` bind the canonical projection
+`compute_content_hash` also hashes (excluding `content_hash` and any prior
+`signature`) to a `{key_id, algorithm, value}` signature, where `key_id` is
+the SHA-256 digest of the raw public key (identity is derived, never
+self-asserted). `SIGNING_ALGORITHMS` is the registry of supported algorithms
+(`ed25519` only so far). `KeyRegistry` persists an append-only key lifecycle
+(`active` → `revoked`) against a finite `KEY_REVOCATION_REASONS` taxonomy
+(`compromised`, `superseded`, `no_longer_used`, `policy_violation`);
+`verify_signed_record_with_registry()` fails closed once a key is revoked,
+even for records it validly signed while active. Requires the optional
+`cryptography` dependency (`pip install atmanatic-research[signing]`); the
+core package stays dependency-free without it. Key rotation workflows and a
+second algorithm remain open.
+
 Parsers SHOULD impose limits on artifact size, nesting depth, collection size,
 reference expansion, and verification resources. Verifiers processing
 untrusted inputs SHOULD run in isolated sandboxes without production secrets or
 network access.
+
+`atmanatic_research/sandbox_runner.py` implements a subprocess sandbox with a
+wall-clock timeout (always enforced), CPU-time and address-space limits via
+POSIX `resource.setrlimit` (best-effort; unavailable on Windows), ambient
+proxy environment variables stripped, and a capped, strictly-parsed stdout
+protocol so malformed or oversized verifier output is rejected as a failed
+result rather than silently accepted. It does not provide OS-level network
+denial or filesystem confinement; every result's `resource_usage.limits_enforced`
+records exactly which controls actually applied so a caller is never misled
+about an unenforced limit. `run_verification_in_sandbox()` is the seam a
+future adapter uses before this library accepts caller-supplied
+specifications or generated code; nothing in this repository calls it with
+untrusted input yet.
 
 ## 13. Privacy and human-rights considerations
 
@@ -666,6 +705,14 @@ Atmanatic MAY publish branded products and hosted services that implement the
 protocol. Such products MUST NOT add hidden requirements to protocol
 conformance.
 
+**Note.** [ATMANATIC_SPECKIT_INTEGRATION_PLAN.md](ATMANATIC_SPECKIT_INTEGRATION_PLAN.md)
+proposes an optional, read-only adapter that converts GitHub Spec Kit
+workflow artifacts (specs, plans, tasks, convergence reports) into ordinary
+Atmanatic envelopes for governance. Like any consumer, it is not protocol
+core, adds no requirement on Spec Kit or any coding agent to parse or
+validate a core artifact, and must not treat Spec Kit convergence, checked
+tasks, or a constitution as review, verification, or evidence by implication.
+
 ## 19. Implementation status at Draft 0.1
 
 | Capability | Status in current repository |
@@ -684,8 +731,9 @@ conformance.
 | Canonical JSON wire representation | Implemented (`atmanatic_research/canonical.py`) |
 | Normative JSON Schemas | Implemented for six core types (`interop/schemas/*.schema.json`) |
 | Hash recomputation and verification | Implemented (`compute_content_hash`, `verify_content_hash`) |
-| Digital signatures and key lifecycle | Not implemented |
-| Transition, revocation, and transparency events | Implemented for transitions (`atmanatic_research/lifecycle_events.py`); revocation-reason taxonomy not implemented |
+| Digital signatures and key lifecycle | Implemented for one algorithm (`atmanatic_research/signing.py`); key rotation workflow and a second algorithm remain open |
+| Sandboxed verification runner | Implemented (`atmanatic_research/sandbox_runner.py`): wall-clock timeout always enforced, CPU/memory limits best-effort on POSIX; no OS-level network denial |
+| Transition, revocation, and transparency events | Implemented for transitions (`atmanatic_research/lifecycle_events.py`) and key revocation (`atmanatic_research/signing.py`); a general artifact revocation-reason taxonomy is not implemented |
 | Stable machine-readable errors | Implemented (`atmanatic_research/error_codes.py`) |
 | Strict RFC 3339 timestamp enforcement | Implemented (`atmanatic_research/timestamps.py`) |
 | Critical/non-critical extension handling | Implemented in `validate_artifact_lineage` and its dependents |

@@ -798,8 +798,10 @@ tiers before it, and nothing here is ordered by convenience.
 ### Known limitation
 This adapter has no untrusted input and needs no sandbox. An adapter that
 accepts caller-supplied specifications or generated code (for example, Lean)
-still needs the sandboxed-subprocess work described in the implementation
-plan's Phase 5 before it can be trusted; that sandbox does not exist yet.
+would run under `atmanatic_research/sandbox_runner.py`'s subprocess sandbox
+(wall-clock timeout always enforced; CPU/memory limits best-effort on POSIX;
+strict, capped output parsing); no such adapter exists yet, so nothing in
+this repository invokes the sandbox with untrusted input.
 
 ---
 
@@ -826,10 +828,11 @@ plan's Phase 5 before it can be trusted; that sandbox does not exist yet.
 - fixture hash is stable across repeated runs with identical cases
 
 ### Known limitation
-The committed corpus in `tests/test_benchmark_harness.py` currently covers 6 of
-the 24 modules in this checklist with paired accept/reject cases. Expanding
-coverage to the remaining modules is tracked in the master roadmap, not
-required for the harness mechanism itself to be considered hardened.
+The committed corpus in `tests/test_benchmark_harness.py` contains 24 benchmark
+entries with paired accept/reject cases. Primitive and stateful APIs use
+deterministic adapters; storage and registry behavior remains covered by the
+dedicated module tests. The benchmark corpus is a regression gate, not a
+replacement for those focused tests.
 
 ---
 

@@ -65,6 +65,7 @@ class GovernedValidityTests(unittest.TestCase):
         )
 
         self.assertTrue(result.passed, result.violations)
+        self.assertEqual(result.violation_codes, [])
         self.assertEqual(packet.level, ValidityLevel.INDEPENDENTLY_VERIFIED)
         self.assertEqual(packet.reviewer, "independent-reviewer")
         self.assertEqual(packet.challenge_outcome, "challenged_and_resolved")
@@ -78,6 +79,7 @@ class GovernedValidityTests(unittest.TestCase):
         )
         self.assertFalse(result.passed)
         self.assertIn("subject hash does not match", result.violations[0])
+        self.assertEqual(result.violation_codes, ["hash_mismatch"])
 
     def test_review_must_be_resolved_and_independent(self):
         packet = _packet()
@@ -93,6 +95,7 @@ class GovernedValidityTests(unittest.TestCase):
             "review artifact must have outcome challenged_and_resolved",
             unresolved.violations,
         )
+        self.assertEqual(unresolved.violation_codes, ["self_review_or_unresolved"])
 
         self_review = advance_with_review(
             packet,
@@ -109,6 +112,7 @@ class GovernedValidityTests(unittest.TestCase):
         )
         self.assertFalse(result.passed)
         self.assertIn("packet metadata content_hash", result.violations[0])
+        self.assertEqual(result.violation_codes, ["missing_or_invalid_field"])
 
     def test_failed_ordered_advance_does_not_mutate_review_fields(self):
         packet = _packet(reviewer="prior-reviewer", challenge_outcome="prior-outcome")

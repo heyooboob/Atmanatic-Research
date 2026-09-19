@@ -33,6 +33,9 @@ with the Python reference implementation on real inputs.
 - `generate_report.py` — runs both reference implementations against the
   fixture corpus and canonical-hash-parity check and writes
   `INTEROPERABILITY_REPORT.md` from the actual results.
+- `build_conformance_package.py` — builds the external-review archive containing
+  the frozen schemas, complete fixture corpus, canonical hash vector, report,
+  and independent TypeScript reference slice.
 
 ## What counts as interoperability evidence
 
@@ -93,3 +96,17 @@ python interop/generate_report.py
 
 Requires `npm install` to have been run in `interop/reference-ts` first. See
 `INTEROPERABILITY_REPORT.md` for the current result.
+
+## Building the external-review package
+
+From the repository root:
+
+```
+python interop/build_conformance_package.py
+```
+
+This writes `dist/atmanatic-protocol-0.1-conformance.zip`. The archive includes
+`CONFORMANCE_MANIFEST.json`, which records SHA-256 values for every protocol
+document, schema, fixture, and reference implementation file included in the
+review scope. CI publishes the archive as a build artifact; an external
+implementation should verify those hashes before running the fixture corpus.

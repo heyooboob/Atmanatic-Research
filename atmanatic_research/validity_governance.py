@@ -9,6 +9,7 @@ from typing import Any
 from validity_protocol import ValidationResult, ValidityLevel, ValidityPacket, advance
 
 from .artifact_contracts import ArtifactContractError, validate_promotion_record, validate_review_outcome
+from .error_codes import HASH_MISMATCH, INVALID_STATE_TRANSITION, MISSING_OR_INVALID_FIELD, SELF_REVIEW_OR_UNRESOLVED
 
 _SHA256 = re.compile(r"^[0-9a-fA-F]{64}$")
 _REVIEW_GATED_LEVELS = {
@@ -29,6 +30,7 @@ def advance_with_review(
         return ValidationResult(
             passed=False,
             violations=[f"{target.value} is not a review-gated validity transition"],
+            violation_codes=[INVALID_STATE_TRANSITION],
         )
 
     packet_hash = packet.metadata.get("content_hash")
@@ -36,6 +38,7 @@ def advance_with_review(
         return ValidationResult(
             passed=False,
             violations=["packet metadata content_hash must be a SHA-256 hex digest"],
+            violation_codes=[MISSING_OR_INVALID_FIELD],
         )
 
     try:
@@ -44,16 +47,19 @@ def advance_with_review(
         return ValidationResult(
             passed=False,
             violations=[f"review artifact is invalid: {error}"],
+            violation_codes=[error.code],
         )
     if review["subject_artifact_hash"].lower() != packet_hash.lower():
         return ValidationResult(
             passed=False,
             violations=["review artifact subject hash does not match packet content hash"],
+            violation_codes=[HASH_MISMATCH],
         )
     if review["outcome"] != "challenged_and_resolved":
         return ValidationResult(
             passed=False,
             violations=["review artifact must have outcome challenged_and_resolved"],
+            violation_codes=[SELF_REVIEW_OR_UNRESOLVED],
         )
 
     previous_reviewer = packet.reviewer
@@ -79,6 +85,7 @@ def promote_packet(packet: ValidityPacket, promotion_record: dict[str, Any]) -> 
         return ValidationResult(
             passed=False,
             violations=[f"packet must be awaiting_human_promotion, was {packet.level.value}"],
+            violation_codes=[INVALID_STATE_TRANSITION],
         )
 
     packet_hash = packet.metadata.get("content_hash")
@@ -86,24 +93,31 @@ def promote_packet(packet: ValidityPacket, promotion_record: dict[str, Any]) -> 
         return ValidationResult(
             passed=False,
             violations=["packet metadata content_hash must be a SHA-256 hex digest"],
+            violation_codes=[MISSING_OR_INVALID_FIELD],
         )
 
     try:
         promotion = validate_promotion_record(promotion_record)
     except ArtifactContractError as error:
-        return ValidationResult(passed=False, violations=[f"promotion record is invalid: {error}"])
+        return ValidationResult(
+            passed=False,
+            violations=[f"promotion record is invalid: {error}"],
+            violation_codes=[error.code],
+        )
 
     if promotion["approved_artifact_hash"].lower() != packet_hash.lower():
         return ValidationResult(
             passed=False,
             violations=["promotion record approved_artifact_hash does not match packet content hash"],
+            violation_codes=[HASH_MISMATCH],
         )
     if promotion["status"] != "approved":
         return ValidationResult(
             passed=False,
             violations=["promotion record status must be 'approved' to promote a packet"],
+            violation_codes=[INVALID_STATE_TRANSITION],
         )
 
     packet.level = ValidityLevel.PROMOTED
     packet.metadata["promotion_record"] = promotion
-    return ValidationResult(passed=True, violations=[])
+    return ValidationResult(passed=True, violations=[], violation_codes=[])

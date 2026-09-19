@@ -65,6 +65,14 @@ def validate_lifecycle_event(record: dict[str, Any]) -> dict[str, Any]:
     violations = record.get("violations", [])
     if not isinstance(violations, list) or not all(isinstance(item, str) for item in violations):
         raise LifecycleEventError("violations must be a list of strings", code=MISSING_OR_INVALID_FIELD)
+    violation_codes = record.get("violation_codes", [])
+    if not isinstance(violation_codes, list) or not all(isinstance(item, str) for item in violation_codes):
+        raise LifecycleEventError("violation_codes must be a list of strings", code=MISSING_OR_INVALID_FIELD)
+    if violation_codes and len(violation_codes) != len(violations):
+        raise LifecycleEventError(
+            "violation_codes must pair one-to-one with violations when present",
+            code=MISSING_OR_INVALID_FIELD,
+        )
     if record["result"] == "rejected" and not violations:
         raise LifecycleEventError(
             "rejected transitions must record at least one violation", code=INVALID_STATE_TRANSITION
@@ -72,6 +80,10 @@ def validate_lifecycle_event(record: dict[str, Any]) -> dict[str, Any]:
     if record["result"] == "accepted" and violations:
         raise LifecycleEventError(
             "accepted transitions must not carry violations", code=INVALID_STATE_TRANSITION
+        )
+    if record["result"] == "accepted" and violation_codes:
+        raise LifecycleEventError(
+            "accepted transitions must not carry violation_codes", code=INVALID_STATE_TRANSITION
         )
     return record
 
@@ -105,6 +117,7 @@ def record_transition(
         "supporting_artifact_hashes": list(supporting_artifact_hashes),
         "result": "accepted" if result.passed else "rejected",
         "violations": list(result.violations),
+        "violation_codes": list(result.violation_codes),
     }
     return result, validate_lifecycle_event(event)
 

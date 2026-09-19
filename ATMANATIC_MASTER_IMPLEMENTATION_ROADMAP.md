@@ -1,6 +1,6 @@
 # Atmanatic Master Implementation Roadmap
 
-**Status:** Working roadmap, synthesized from current repository state
+**Status:** Canonical implementation path; synthesized from current repository state
 **Date:** 2026-09-18
 **Purpose:** Translate the existing strategy documents into one ordered,
 falsifiable execution sequence. This document does not replace
@@ -25,39 +25,59 @@ separation between optimization, memory, verification, and authority — that:
 Everything below is the path from "well-specified library with passing tests"
 to that end state.
 
-## 2. Ground truth: what exists right now
+## 2. Source of truth and current ground truth
+
+This roadmap is the canonical execution sequence. Use the documents below for
+the corresponding kind of decision:
+
+| Question | Source of truth |
+| --- | --- |
+| What should be implemented next? | This roadmap, section 4 |
+| What must each module enforce and test? | [docs/architecture/implementation_checklist.md](docs/architecture/implementation_checklist.md) |
+| What is currently implemented per module? | [docs/architecture/README.md](docs/architecture/README.md) |
+| What is the protocol contract and compatibility boundary? | [ATMANATIC_PROTOCOL_0.1_DRAFT.md](ATMANATIC_PROTOCOL_0.1_DRAFT.md) |
+| Why does the architecture exist and what are its phases? | [ATMANATIC_VERIFIABLE_AGENTIC_RESEARCH_IMPLEMENTATION_PLAN.md](ATMANATIC_VERIFIABLE_AGENTIC_RESEARCH_IMPLEMENTATION_PLAN.md) |
+| How should Spec Kit integrate without weakening the protocol boundary? | [ATMANATIC_SPECKIT_INTEGRATION_PLAN.md](ATMANATIC_SPECKIT_INTEGRATION_PLAN.md) |
+| How should theoretical extensions be evaluated and rolled out? | [ATMANATIC_THEORETICAL_EXTENSIONS_ROLLOUT_PLAN.md](ATMANATIC_THEORETICAL_EXTENSIONS_ROLLOUT_PLAN.md) |
+
+When these documents disagree about implementation status, repository code and
+passing tests are authoritative; update this roadmap and the architecture
+index in the same change. The protocol draft may intentionally describe future
+requirements as **Proposed** even when the reference implementation already
+contains a partial capability.
+
+### Ground truth: what exists right now
 
 Verified directly against the repository, not against the plan documents:
 
 | Area | State |
 | --- | --- |
-| Package | `atmanatic-research` 0.1.0, zero runtime deps, `requires-python >= 3.11`, wheel builds clean |
-| Tests | 97 tests across 12 files, all passing |
-| Contracts implemented | proposal, artifact, evidence, promotion-record, benchmark, review, source-policy, validity governance, orchestration + audit events |
+| Package | `atmanatic-research` 0.1.0, zero required runtime deps (`cryptography` optional via the `signing` extra), `requires-python >= 3.11`, wheel builds clean |
+| Tests | 227 Python tests and 26 TypeScript tests, all passing |
+| Contracts implemented | proposal, artifact, evidence, promotion-record, benchmark, review, source-policy, validity governance, orchestration + audit events, graph analysis, verification-result envelopes, and key-record envelopes |
 | Orchestration | proposer/referee loop, typed findings/responses, non-progress detection, time budgets, escalation requests, deterministic audit events — all implemented (Phase 3 substantially complete) |
-| Repository boundary | shims removed, packaging clean, separation audit passes with zero violations — but **no second repository has ever actually been split off and proven** |
-| Protocol 0.1 draft | written, but self-declares several **Proposed** (not implemented) sections: strict RFC 3339 timestamp profile, canonical JSON + content-hash projection, extensions mechanism, machine-readable error codes/conformance results |
-| Graph analysis (optimization/memory layer) | fully specified in [docs/architecture/eigenvector_graph_analysis.md](docs/architecture/eigenvector_graph_analysis.md) — **`atmanatic_research/graph_analysis.py` does not exist yet** |
-| Benchmark harness (Phase 4) | validator (`validate_benchmark`) exists; no fixtures, no harness, no CI gate |
-| Formal verification adapters (Phase 5) | not started — no sandbox, no verifier-result runner |
-| Lifecycle event log / promotion workflow (Phase 6) | `validate_promotion_record` exists as a static contract; no transition-event log wiring it to `validity_governance.py` |
-| Release hardening (Phase 8) | no signing, no wheel-inspection CI, no rollback runbook |
-| Working tree | uncommitted changes: `docs/architecture/*`, `docs/foundations/*`, two new root docs, and edits to the implementation plan + README referencing them |
+| Repository boundary | shims removed, packaging clean, and the isolated wheel/consumer split acceptance test passes |
+| Protocol 0.1 draft | canonical JSON, strict timestamp handling, extensions, error codes, six normative schemas, signing, and key lifecycle are implemented; a general artifact revocation-reason taxonomy and key rotation workflow remain open |
+| Graph analysis (optimization/memory layer) | implemented in `atmanatic_research/graph_analysis.py` and deliberately isolated from governance |
+| Benchmark harness (Phase 4) | implemented and covered by 24 benchmark entries, including deterministic adapters for primitive and stateful APIs |
+| Formal verification adapters (Phase 5) | narrow fixed-code validity-ladder pilot implemented; `atmanatic_research/sandbox_runner.py` provides a resource-limited, timeout-enforcing subprocess sandbox with a strict output protocol, ready for a future untrusted-specification adapter, but nothing yet calls it with untrusted input |
+| Lifecycle event log / promotion workflow (Phase 6) | implemented in `lifecycle_events.py` and `validity_governance.py`; a general artifact revocation-reason taxonomy remains open (key revocation reasons are implemented in `signing.py`) |
+| Release hardening (Phase 8) | done: wheel inspection, CI gates, signing (`atmanatic_research/signing.py`), key lifecycle, tag-vs-version checks (`scripts/check_release_tag.py`), dependency scanning (`scripts/scan_dependencies.py`), and a signed-manifest CI release job are all implemented; see [RELEASE_RUNBOOK.md](RELEASE_RUNBOOK.md) |
+| Working tree | clean at the time of this roadmap update |
 
-**Read of the situation:** Phases 0–3 of the implementation plan are real and
-tested. Phases 4–8 are specified in prose but have zero code. The Protocol 0.1
-draft is honest about its own gaps. This is a good position — the foundation
-is solid — but "ultimate goal" work from here is concrete engineering, not
-more strategy documents.
+**Read of the situation:** the core contract, orchestration, optimization,
+lifecycle, verification-pilot, interoperability, signing/key-lifecycle, and
+repository-boundary work is implemented and tested, and release operations
+(Phase 8) are now complete end to end. Remaining work is concentrated in
+deeper benchmark coverage, wiring the sandbox runner to a real
+untrusted-specification adapter, protocol registries, key rotation tooling,
+and a general artifact revocation taxonomy.
 
-## 3. Immediate housekeeping (do this first, low risk)
+## 3. Completed housekeeping
 
-1. Commit the current working tree (`docs/architecture/*`, `docs/foundations/*`,
-   the two new root docs, and the plan/README edits). Uncommitted architecture
-   docs are not reviewable or citable as "current state" until they're in history.
-2. Add a one-line status table to [docs/architecture/README.md](docs/architecture/README.md)
-   marking each phase `implemented`, `partial`, or `not started`, cross-linked
-   to this roadmap, so the phase status never drifts from reality again.
+The architecture index contains the per-module status table and cross-links
+back to this roadmap. Repository commits remain an ordinary release/workflow
+operation and are intentionally not part of implementation status.
 
 ## 4. Execution sequence (priority order)
 
@@ -108,9 +128,13 @@ contract exception (`ArtifactContractError`, `ProposalContractError`,
 registry in the protocol draft's error model section; and
 `validate_artifact_lineage()` now accepts `supported_extensions` and enforces
 fail-closed rejection of unsupported critical extensions while preserving
-unknown non-critical ones. Remaining open items: normative JSON Schemas,
-signatures/key lifecycle, and structured codes on `ValidationResult` (the
-validity-transition path still returns string violations, not codes).
+unknown non-critical ones. `ValidationResult` (`validity_protocol.validator`)
+now carries a `violation_codes` field paired one-to-one with `violations`,
+backed by the finite registry in `validity_protocol/codes.py`; every
+`ValidationResult`-returning transition (`validate_packet()`, `advance()`,
+`advance_with_review()`, `promote_packet()`) and the persisted lifecycle
+event record populate it. Remaining open items: normative JSON Schemas and
+signatures/key lifecycle.
 
 1. ~~Freeze one canonical JSON representation...~~
 2. ~~Enforce the RFC 3339 + explicit-UTC-offset timestamp rule...~~
@@ -133,17 +157,19 @@ metrics — no composite score — and returns a record that passes the existing
 `validate_benchmark()` contract. `tests/test_benchmark_harness.py` proves a
 deliberately broken validator (one that accepts everything) fails the
 corresponding case rather than passing silently, which is the actual
-regression-gate behavior; wiring this into CI is still open since no CI
-configuration exists in this repository yet.
+regression-gate behavior. The repository CI runs the full test suite, including
+this benchmark gate.
 
-1. Create a `benchmarks/` (or `tests/fixtures/`) directory with fixed,
-   content-hashed fixtures: valid, invalid, boundary, and adversarial cases per
-   module in [implementation_checklist.md](docs/architecture/implementation_checklist.md).
+1. Maintain the fixed, content-hashed corpus in
+   `tests/test_benchmark_harness.py` with valid, invalid, boundary, and
+   adversarial cases for every checklist module. Primitive and stateful APIs
+   use deterministic adapters; storage and registry behavior remains covered
+   by dedicated unit tests.
 2. Track false-accept rate, false-reject rate, and reproducibility across runs
    as separate numbers — no composite score (the plan explicitly forbids a
    single "Sycophancy Resistance Score" until its methodology is defined).
-3. Wire it into CI as a regression gate: a change cannot be called an
-   improvement unless the compatibility corpus still passes.
+3. Keep the benchmark tests wired into CI as a regression gate: a change cannot
+   be called an improvement unless the compatibility corpus still passes.
 
 **Exit check:** a deliberately broken PR (e.g., a validator that silently
 accepts a naive timestamp) fails the benchmark gate, not just unit tests.
@@ -244,20 +270,39 @@ target. Executing it once converts it from a claim into evidence.
 
 ### Step 7 — Phase 8: release hardening
 
-**Status: partially done.** `scripts/inspect_release.py` builds the wheel,
-computes its SHA-256 over the exact archive bytes, and fails closed if any
-member falls outside `atmanatic_research`/`validity_protocol` or escapes the
-archive root (path traversal). `tests/test_release_inspection.py` proves a
-synthetic wheel containing an unexpected top-level package is rejected, and
-that the current tree builds a clean one. Still open, and lower priority until
-there is a real external consumer to ship to: signing, key lifecycle, a CI
-pipeline that runs this on tag, a rollback runbook, and dependency/vulnerability
-scanning (the package has zero runtime dependencies today, so this is low risk
-but not yet automated).
+**Status: done.** `scripts/inspect_release.py` builds the wheel, computes its
+SHA-256 over the exact archive bytes, and fails closed if any member falls
+outside `atmanatic_research`/`validity_protocol` or escapes the archive root
+(path traversal); `tests/test_release_inspection.py` proves a synthetic wheel
+containing an unexpected top-level package is rejected, and that the current
+tree builds a clean one.
 
-Signed, hash-verified, rollback-capable releases with CI wheel inspection and
-a dependency/vulnerability scan — mechanical once Steps 1–6 exist, and low
-value to do earlier since there's nothing worth shipping externally yet.
+Signing, key lifecycle, dependency scanning, tag checks, and a rollback
+runbook are now implemented on top of that:
+
+- `atmanatic_research/signing.py` (ed25519, requires the optional
+  `cryptography` extra) plus `scripts/generate_release_key.py`,
+  `scripts/sign_release.py`, and `scripts/verify_release_manifest.py` build,
+  sign, and independently re-verify a non-authorizing release manifest
+  (`execution_authorized: false`) binding a tag to the wheel's exact SHA-256,
+  against a registered, active key in `release/keys.jsonl`.
+- `scripts/check_release_tag.py` fails closed unless a `vMAJOR.MINOR.PATCH`
+  git tag matches `[project].version` in `pyproject.toml` exactly.
+- `scripts/scan_dependencies.py` runs `pip-audit --strict` and fails closed
+  if the scanner itself is missing rather than reporting a false-clean scan.
+- `.github/workflows/ci.yml`'s `python` job now runs the dependency scan on
+  every push/PR, and a new tag-gated `release` job (`refs/tags/v*`) runs the
+  tag check, signs the release manifest from a CI secret key, re-verifies it,
+  and uploads it as a build artifact.
+- [RELEASE_RUNBOOK.md](RELEASE_RUNBOOK.md) documents the end-to-end
+  procedure: key bootstrap, cutting a release, verifying one later, rollback
+  (restore the retained artifact, never rebuild at rollback time), and key
+  compromise/rotation (revoke via the finite `KEY_REVOCATION_REASONS`
+  taxonomy; past signatures remain valid historical attestations).
+- `release/keys.jsonl` itself is intentionally not committed by this change:
+  minting the actual production key is a maintainer action
+  (`scripts/generate_release_key.py`, run locally, never in CI), not
+  something this repository should assert on a maintainer's behalf.
 
 ### Step 8 — Standards-track activity (longer horizon)
 
