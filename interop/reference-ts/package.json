@@ -9,7 +9,7 @@
     "test": "tsc && node --test dist/test/fixtures.test.js dist/test/canonical.test.js"
   },
   "devDependencies": {
-    "typescript": "^5.6.0",
+    "typescript": "^7.0.2",
     "@types/node": "^22.0.0"
   }
 }
