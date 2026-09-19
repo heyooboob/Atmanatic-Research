@@ -11,8 +11,14 @@ than being silently reported as a clean scan.
 from __future__ import annotations
 
 import importlib.util
+import importlib.metadata
 import subprocess
 import sys
+import tempfile
+from pathlib import Path
+
+
+LOCAL_PROJECT_NAME = "atmanatic-research"
 
 
 class DependencyScanError(RuntimeError):
@@ -29,17 +35,36 @@ def _require_pip_audit() -> None:
 
 
 def scan_dependencies() -> str:
-    """Run pip-audit against the current environment; return its output, or raise on any finding."""
+    """Audit installed external distributions without requiring this project on PyPI."""
     _require_pip_audit()
-    result = subprocess.run(
-        [sys.executable, "-m", "pip_audit", "--strict", "--progress-spinner", "off"],
-        capture_output=True,
-        text=True,
-    )
-    output = result.stdout + result.stderr
-    if result.returncode != 0:
-        raise DependencyScanError(f"pip-audit reported a finding or failure (exit code {result.returncode}):\n{output}")
-    return output
+    requirements = [
+        f"{distribution.metadata['Name']}=={distribution.version}"
+        for distribution in importlib.metadata.distributions()
+        if distribution.metadata.get("Name", "").lower().replace("_", "-") != LOCAL_PROJECT_NAME
+    ]
+    with tempfile.TemporaryDirectory(prefix="atmanatic-dependency-scan-") as temporary_directory:
+        requirements_path = Path(temporary_directory) / "requirements.txt"
+        requirements_path.write_text("\n".join(sorted(requirements)) + "\n", encoding="utf-8")
+        result = subprocess.run(
+            [
+                sys.executable,
+                "-m",
+                "pip_audit",
+                "--strict",
+                "--progress-spinner",
+                "off",
+                "--requirement",
+                str(requirements_path),
+            ],
+            capture_output=True,
+            text=True,
+        )
+        output = result.stdout + result.stderr
+        if result.returncode != 0:
+            raise DependencyScanError(
+                f"pip-audit reported a finding or failure (exit code {result.returncode}):\n{output}"
+            )
+        return output
 
 
 def main() -> int:
