@@ -30,6 +30,12 @@ def _build_parser() -> argparse.ArgumentParser:
     status_parser = subparsers.add_parser("status", help="alias for list")
     status_parser.add_argument("--registry-path", default="skills.json")
 
+    summary_parser = subparsers.add_parser("summary", help="print a human-friendly summary of a skill and its latest run")
+    summary_parser.add_argument("--skill-name", required=True)
+    summary_parser.add_argument("--registry-path", default="skills.json")
+    summary_parser.add_argument("--store-root", default="skill-store")
+    summary_parser.add_argument("--json", action="store_true", help="emit structured JSON output")
+
     audit_parser = subparsers.add_parser("audit", help="audit transcript activity against a registered skill")
     audit_parser.add_argument("--skill-name", required=True)
     audit_parser.add_argument("--registry-path", default="skills.json")
@@ -95,6 +101,52 @@ def main(argv: list[str] | None = None) -> int:
         }, indent=2, sort_keys=True))
         return 0
 
+    if args.command == "summary":
+        try:
+            manifest = _load_manifest(args.registry_path, args.skill_name)
+            store = SkillRunStore(Path(args.store_root))
+            payload = store._load_index()
+            runs = payload.get("skills", {}).get(manifest.name, [])
+            latest = runs[-1] if runs else {}
+            summary = {
+                "skill_name": manifest.name,
+                "version": manifest.version,
+                "runs_seen": len(runs),
+                "status": "never_run" if not runs else ("aligned" if latest.get("audit_result", {}).get("aligned", False) else "misaligned"),
+                "aligned": bool(latest.get("audit_result", {}).get("aligned", False)) if runs else False,
+                "matched_actions": list(latest.get("audit_result", {}).get("matched_actions", [])) if runs else [],
+                "missing_actions": list(latest.get("audit_result", {}).get("missing_actions", [])) if runs else list(manifest.expected_actions),
+                "mismatches": list(latest.get("audit_result", {}).get("mismatches", [])) if runs else [],
+                "events": list(latest.get("audit_result", {}).get("events", [])) if runs else [],
+                "summary": dict(latest.get("audit_result", {}).get("summary", {})) if runs else {
+                    "total_expected": len(manifest.expected_actions),
+                    "total_matched": 0,
+                    "total_missing": len(manifest.expected_actions),
+                    "total_mismatches": 0,
+                },
+                "last_run_dir": str(latest.get("run_dir", "")) if runs else "",
+                "last_created_at": str(latest.get("created_at", "")) if runs else "",
+            }
+            if args.json:
+                print(json.dumps(summary, indent=2, sort_keys=True))
+                return 0
+            lines = [
+                f"Skill: {manifest.name}",
+                f"Version: {manifest.version}",
+                f"Status: {summary['status']}",
+                f"Runs seen: {summary['runs_seen']}",
+                f"Matched actions: {', '.join(summary['matched_actions']) if summary['matched_actions'] else 'none'}",
+                f"Missing actions: {', '.join(summary['missing_actions']) if summary['missing_actions'] else 'none'}",
+                f"Mismatches: {', '.join(summary['mismatches']) if summary['mismatches'] else 'none'}",
+            ]
+            if summary['last_run_dir']:
+                lines.append(f"Last run: {summary['last_run_dir']}")
+            print("\n".join(lines))
+            return 0
+        except Exception as exc:  # pragma: no cover - CLI output path
+            print(json.dumps({"error": str(exc)}))
+            return 1
+
     if args.command == "audit":
         try:
             manifest = _load_manifest(args.registry_path, args.skill_name)
@@ -113,16 +165,15 @@ def main(argv: list[str] | None = None) -> int:
                 "matched_actions": list(audit.matched_actions),
                 "missing_actions": list(audit.missing_actions),
                 "mismatches": list(audit.mismatches),
+                "events": [dict(event) for event in audit.events],
+                "summary": dict(audit.summary),
                 "run_dir": str(Path(args.store_root) / "skills" / manifest.name),
                 "artifact": str(record.output_paths[0]) if record.output_paths else "",
             }
-            if args.json:
-                print(json.dumps(payload, indent=2, sort_keys=True))
-            else:
-                print(json.dumps(payload, indent=2, sort_keys=True))
+            print(json.dumps(payload, indent=2, sort_keys=True))
             return 0
         except Exception as exc:  # pragma: no cover - CLI output path
-            print(json.dumps({"error": str(exc)}), file=None)
+            print(json.dumps({"error": str(exc)}))
             return 1
 
     parser.error(f"unsupported command: {args.command}")

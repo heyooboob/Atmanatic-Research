@@ -2,10 +2,11 @@
 
 ## Current posture
 
-Atmanatic Research remains independently owned and private while the reference
-implementation, protocol corpus, release process, and consumer documentation
-stabilize. Public visibility is deferred until the project has the review and
-adoption materials needed for a credible first release.
+Atmanatic Research is publicly visible as an alpha reference implementation.
+The reference implementation, protocol corpus, release process, and consumer
+documentation remain subject to review and change. Public visibility does not
+constitute standards approval, production-safety certification, or a stable
+1.0 compatibility commitment.
 
 The project should build recognition through demonstrated interoperability,
 independent review, reproducible conformance results, and consumer adoption.

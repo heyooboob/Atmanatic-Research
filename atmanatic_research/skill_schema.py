@@ -36,6 +36,29 @@ SKILL_RUN_SCHEMA = {
                 "matched_actions": {"type": "array", "items": {"type": "string"}},
                 "missing_actions": {"type": "array", "items": {"type": "string"}},
                 "mismatches": {"type": "array", "items": {"type": "string"}},
+                "events": {
+                    "type": "array",
+                    "items": {
+                        "type": "object",
+                        "required": ["action", "status", "source"],
+                        "properties": {
+                            "action": {"type": "string"},
+                            "status": {"type": "string"},
+                            "source": {"type": "string"},
+                        },
+                        "additionalProperties": True,
+                    },
+                },
+                "summary": {
+                    "type": "object",
+                    "properties": {
+                        "total_expected": {"type": "integer"},
+                        "total_matched": {"type": "integer"},
+                        "total_missing": {"type": "integer"},
+                        "total_mismatches": {"type": "integer"},
+                    },
+                    "additionalProperties": True,
+                },
             },
         },
         "metadata": {"type": "object", "additionalProperties": {"type": "string"}},
@@ -83,6 +106,20 @@ def validate_skill_run_artifact(record: dict[str, Any]) -> dict[str, Any]:
         if not isinstance(values, list) or not all(isinstance(item, str) for item in values):
             raise ValueError(f"audit_result.{key} must be a list of strings")
 
+    events = audit_result.get("events", [])
+    if events is not None:
+        if not isinstance(events, list) or not all(isinstance(item, dict) for item in events):
+            raise ValueError("audit_result.events must be a list of objects")
+        for event in events:
+            for key in ("action", "status", "source"):
+                if key not in event or not isinstance(event[key], str):
+                    raise ValueError(f"audit_result.events entries must include string '{key}'")
+
+    summary = audit_result.get("summary", {})
+    if summary is not None:
+        if not isinstance(summary, dict):
+            raise ValueError("audit_result.summary must be an object")
+
     if not isinstance(audit_result.get("aligned"), bool):
         raise ValueError("audit_result.aligned must be a boolean")
 
@@ -94,6 +131,8 @@ def validate_skill_run_artifact(record: dict[str, Any]) -> dict[str, Any]:
         "matched_actions": list(audit_result.get("matched_actions", [])),
         "missing_actions": list(audit_result.get("missing_actions", [])),
         "mismatches": list(audit_result.get("mismatches", [])),
+        "events": [dict(event) for event in events],
+        "summary": dict(summary) if isinstance(summary, dict) else {},
     }
     normalized.setdefault("metadata", {})
     return normalized

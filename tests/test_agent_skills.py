@@ -17,6 +17,7 @@ from atmanatic_research import (
     build_skill_profile,
 )
 from atmanatic_research.skill_cli import main as skill_cli_main
+from atmanatic_research.skill_schema import validate_skill_run_artifact
 
 
 class AgentSkillLifecycleTests(unittest.TestCase):
@@ -282,3 +283,99 @@ class AgentSkillLifecycleTests(unittest.TestCase):
                 run_index = json.load(handle)
             self.assertIn("skills", run_index)
             self.assertIn("quality-review", run_index["skills"])
+
+    def test_summary_command_emits_human_friendly_report(self):
+        with tempfile.TemporaryDirectory() as tmpdir:
+            registry_path = os.path.join(tmpdir, "skills.json")
+            store_root = os.path.join(tmpdir, "skill-store")
+            skill_cli_main([
+                "create",
+                "--name",
+                "quality-review",
+                "--purpose",
+                "Validate output quality before release.",
+                "--version",
+                "0.4.0",
+                "--output-dir",
+                "runs",
+                "--output-dir",
+                "logs",
+                "--register-path",
+                registry_path,
+                "--expected-action",
+                "inspect evidence",
+                "--expected-action",
+                "record finding",
+                "--model-family",
+                "gpt-4o-mini",
+            ])
+            skill_cli_main([
+                "audit",
+                "--skill-name",
+                "quality-review",
+                "--registry-path",
+                registry_path,
+                "--store-root",
+                store_root,
+                "--transcript",
+                "The agent inspected evidence and recorded the finding.",
+                "--observed-action",
+                "inspect evidence",
+                "--observed-action",
+                "record finding",
+            ])
+
+            buffer = io.StringIO()
+            with redirect_stdout(buffer):
+                status = skill_cli_main([
+                    "summary",
+                    "--skill-name",
+                    "quality-review",
+                    "--registry-path",
+                    registry_path,
+                    "--store-root",
+                    store_root,
+                ])
+            self.assertEqual(status, 0)
+            report = buffer.getvalue()
+            self.assertIn("quality-review", report)
+            self.assertIn("aligned", report.lower())
+
+    def test_richer_audit_schema_accepts_event_metadata(self):
+        artifact = {
+            "schema_version": 1,
+            "skill_name": "quality-review",
+            "skill_version": "0.4.0",
+            "git_ref": "main",
+            "created_at": "2026-09-19T00:00:00Z",
+            "transcript": "The agent inspected evidence and recorded the finding.",
+            "observed_actions": ["inspect evidence", "record finding"],
+            "output_paths": ["runs/quality-review.json"],
+            "audit_result": {
+                "aligned": True,
+                "matched_actions": ["inspect evidence", "record finding"],
+                "missing_actions": [],
+                "mismatches": [],
+                "events": [
+                    {"action": "inspect evidence", "status": "matched", "source": "transcript"},
+                    {"action": "record finding", "status": "matched", "source": "observed_actions"},
+                ],
+                "summary": {
+                    "total_expected": 2,
+                    "total_matched": 2,
+                    "total_missing": 0,
+                    "total_mismatches": 0,
+                },
+            },
+            "metadata": {
+                "repository": "https://example.com/repo",
+                "model_profile": "gpt-4o-mini",
+                "purpose": "Validate output quality before release.",
+                "run_id": "run-123",
+            },
+        }
+
+        normalized = validate_skill_run_artifact(artifact)
+        self.assertTrue(normalized["audit_result"]["aligned"])
+        self.assertEqual(normalized["audit_result"]["events"][0]["status"], "matched")
+        self.assertEqual(normalized["audit_result"]["summary"]["total_expected"], 2)

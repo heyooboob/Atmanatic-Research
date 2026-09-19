@@ -62,6 +62,8 @@ class SkillAuditResult:
     matched_actions: tuple[str, ...] = ()
     missing_actions: tuple[str, ...] = ()
     mismatches: tuple[str, ...] = ()
+    events: tuple[dict[str, str], ...] = ()
+    summary: dict[str, int] = field(default_factory=dict)
 
 
 @dataclass(frozen=True)
@@ -130,7 +132,12 @@ class SkillRegistry:
 
 
 class SkillRunStore:
-    """Persistent storage for run metadata and generated outputs."""
+    """Persist consumer-local run metadata and generated outputs.
+
+    The store records observations for local skill evaluation. It does not
+    publish telemetry, change a skill version, or promote a behavior into the
+    public package; those decisions require a reviewed release change.
+    """
 
     def __init__(self, root_dir: str | Path):
         self.root_dir = Path(root_dir)
@@ -175,6 +182,8 @@ class SkillRunStore:
                 "matched_actions": list(record.audit_result.matched_actions),
                 "missing_actions": list(record.audit_result.missing_actions),
                 "mismatches": list(record.audit_result.mismatches),
+                "events": [dict(event) for event in record.audit_result.events],
+                "summary": dict(record.audit_result.summary),
             },
             "metadata": {
                 "repository": manifest.repository or "",
@@ -182,6 +191,7 @@ class SkillRunStore:
                 "purpose": manifest.purpose,
                 "output_directories": list(manifest.output_directories),
                 "audit_policy": manifest.audit_policy,
+                "run_id": run_dir.name,
             },
         }
         artifact_path = run_dir / "artifact.json"
@@ -214,7 +224,6 @@ class SkillRunStore:
         if not isinstance(manifest, SkillManifest):
             raise TypeError("manifest must be a SkillManifest")
 
-        run_dir = self._run_dir_for(manifest)
         run_dir = self._run_dir_for(manifest)
         normalized_outputs = tuple(
             self._normalize_output_path(path, run_dir=run_dir)
@@ -254,6 +263,8 @@ class SkillRunStore:
                 "matched_actions": list(record.audit_result.matched_actions),
                 "missing_actions": list(record.audit_result.missing_actions),
                 "mismatches": list(record.audit_result.mismatches),
+                "events": [dict(event) for event in record.audit_result.events],
+                "summary": dict(record.audit_result.summary),
             },
             "run_dir": str(run_dir),
             "created_at": self._timestamp(),
@@ -272,6 +283,7 @@ class SkillRunStore:
         if not runs:
             return None
         latest = runs[-1]
+        audit_payload = latest.get("audit_result", {})
         return SkillRunRecord(
             skill_name=skill_name,
             skill_version=str(latest.get("skill_version", "unknown")),
@@ -279,10 +291,12 @@ class SkillRunStore:
             transcript=str(latest.get("transcript", "")),
             output_paths=tuple(latest.get("output_paths", ())),
             audit_result=SkillAuditResult(
-                aligned=bool(latest.get("audit_result", {}).get("aligned", False)),
-                matched_actions=tuple(latest.get("audit_result", {}).get("matched_actions", ())),
-                missing_actions=tuple(latest.get("audit_result", {}).get("missing_actions", ())),
-                mismatches=tuple(latest.get("audit_result", {}).get("mismatches", ())),
+                aligned=bool(audit_payload.get("aligned", False)),
+                matched_actions=tuple(audit_payload.get("matched_actions", ())),
+                missing_actions=tuple(audit_payload.get("missing_actions", ())),
+                mismatches=tuple(audit_payload.get("mismatches", ())),
+                events=tuple(dict(event) for event in audit_payload.get("events", ())),
+                summary=dict(audit_payload.get("summary", {})),
             ),
             metadata={"repository": "", "run_dir": str(latest.get("run_dir", ""))},
         )
@@ -310,6 +324,7 @@ class SkillAuditLoop:
         matched: list[str] = []
         missing: list[str] = []
         mismatches: list[str] = []
+        events: list[dict[str, str]] = []
 
         for action in manifest.expected_actions:
             normalized_action = action.lower()
@@ -320,19 +335,35 @@ class SkillAuditLoop:
             )
             if present_in_transcript or present_in_observed:
                 matched.append(action)
+                source = "transcript"
+                if present_in_observed and not present_in_transcript:
+                    source = "observed_actions"
+                elif present_in_transcript and present_in_observed:
+                    source = "transcript+observed_actions"
+                events.append({"action": action, "status": "matched", "source": source})
             else:
                 missing.append(action)
+                events.append({"action": action, "status": "missing", "source": "none"})
 
         if observed and not matched:
             mismatches.append("observed actions failed to account for expected actions")
         if not missing and not matched and manifest.expected_actions:
             mismatches.append("there were no actionable matches")
 
+        summary = {
+            "total_expected": len(manifest.expected_actions),
+            "total_matched": len(matched),
+            "total_missing": len(missing),
+            "total_mismatches": len(mismatches),
+        }
+
         return SkillAuditResult(
             aligned=not missing,
             matched_actions=tuple(matched),
             missing_actions=tuple(missing),
             mismatches=tuple(mismatches),
+            events=tuple(events),
+            summary=summary,
         )
 
 

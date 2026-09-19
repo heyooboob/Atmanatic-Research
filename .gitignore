@@ -4,3 +4,36 @@ dist/
 __pycache__/
 *.pyc
 node_modules/
+
+# Local runtime state and generated agent artifacts
+memory/
+logs/
+knowledge_base/
+skill-store/
+skill-store-*/
+runs/
+skills.json
+skill_runs.json
+*.db
+*.sqlite
+*.sqlite3
+*.parquet
+*.index
+*.bin
+*.pkl
+
+# Local configuration and secrets
+.env
+.env.*
+!.env.example
+config.local.*
+
+# Tool and operating-system noise
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+.coverage
+.coverage.*
+htmlcov/
+.DS_Store
+Thumbs.db

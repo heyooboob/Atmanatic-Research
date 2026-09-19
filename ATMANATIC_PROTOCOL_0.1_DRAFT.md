@@ -4,7 +4,7 @@
 **Date:** 2026-09-17  
 **Category:** Standards Track  
 **Intended audience:** implementers, reviewers, standards bodies, and operators  
-**Canonical repository:** to be assigned before public review
+**Canonical repository:** https://github.com/heyooboob/Atmanatic-Research
 
 ## Abstract
 

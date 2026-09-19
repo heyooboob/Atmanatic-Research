@@ -48,6 +48,37 @@ execution; a release manifest's `execution_authorized` field is always
 
 ## Cutting a release
 
+The local working tree is the preparation surface. The tagged, signed release
+artifact is the public compatibility surface. Do not treat an untagged branch,
+working-tree install, or locally generated wheel as a supported public
+release.
+
+### Promotion rules
+
+Promotion from local development to the public release surface requires all of
+the following:
+
+1. The change is represented by a reviewed commit on the default branch; local
+   notes, ignored files, generated caches, and working-tree-only behavior are
+   not release inputs.
+2. The complete CI workflow passes for the same commit, including Python tests,
+   TypeScript interoperability, repository-boundary checks, wheel inspection,
+   and dependency scanning.
+3. The package version is changed deliberately, and the release tag matches
+   that version exactly.
+4. The exact wheel intended for publication is built, signed, and verified
+   before publication. A locally built wheel is only a preparation artifact
+   until its CI-built hash is bound into the signed manifest.
+5. The release assets are retained as the public provenance record: wheel,
+   signed manifest, conformance archive, and interoperability report.
+6. The prior known-good release remains available for verification and
+   rollback.
+
+If any rule fails, keep the work local or return it to the normal review and CI
+cycle. Do not publish a partial release, bypass a failed gate, or describe an
+untagged branch as the supported public interface. Consumers should integrate
+against the tagged package or published release assets only.
+
 1. Land the reviewed change on the default branch; CI (`.github/workflows/ci.yml`,
    job `python`) must pass: full test suite, repository-split acceptance
    test, wheel inspection, and dependency scan.

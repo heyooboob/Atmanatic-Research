@@ -29,6 +29,46 @@ another system's input and the handoff needs durable provenance. Consumers keep
 their own models, storage, transport, credentials, and operational authority;
 Atmanatic supplies the contracts and gates at the boundary.
 
+## Example: audit a skill against a transcript
+
+```python
+from pathlib import Path
+from atmanatic_research import SkillManifest
+from atmanatic_research.agent_skills import SkillRunStore
+
+manifest = SkillManifest(
+    name="quality-review",
+    purpose="Validate output quality before release.",
+    version="0.4.0",
+    git_ref="main",
+    output_directories=("runs", "logs"),
+    expected_actions=("inspect evidence", "record finding"),
+    model_profile="gpt-4o-mini",
+)
+
+store = SkillRunStore(Path("skill-store-demo"))
+record = store.record_run(
+    manifest,
+    transcript="The agent inspected evidence and recorded the finding.",
+    observed_actions=("inspect evidence", "record finding"),
+    output_paths=("runs/quality-review.json", "logs/quality-review.log"),
+)
+
+print(record.audit_result.aligned)
+print(record.audit_result.summary)
+```
+
+This creates a timestamped run directory, writes the persisted artifact JSON, and
+stores the aligned/misaligned audit metadata so the behavior of an agent can be
+reviewed over time.
+
+The skill manifest, audit loop, schema, and CLI are reusable wheel capabilities.
+The registry, transcripts, run artifacts, logs, and generated outputs are
+consumer-local evaluation state. Atmanatic does not upload that state or
+automatically change a published skill version. Local audit evidence can inform
+a later, reviewed skill-version update released through the normal commit and
+CI gates.
+
 ## Install From GitHub
 
 Install the current repository revision directly:
@@ -44,8 +84,28 @@ protocol in another language.
 
 The source repository is now public. Install the released package from PyPI
 with `python -m pip install atmanatic-research`, and see
+[docs/CONSUMER_GUIDE.md](docs/CONSUMER_GUIDE.md) for integration levels,
+capability limits, reporting routes, and conformance guidance. Also see
 [CONTRIBUTING.md](CONTRIBUTING.md) for local checks and protocol change
-expectations, and [SECURITY.md](SECURITY.md) for vulnerability reporting.
+expectations, [docs/LOCAL_PUBLIC_BOUNDARY.md](docs/LOCAL_PUBLIC_BOUNDARY.md)
+for the local-to-public promotion boundary, and [SECURITY.md](SECURITY.md) for
+vulnerability reporting.
+
+## Alpha Status And Compatibility
+
+The `0.1.x` line is an alpha reference implementation. Its public compatibility
+surface is the released Python package, the Protocol 0.1 schemas and fixtures,
+the conformance archive, and the signed release manifest. The TypeScript
+implementation currently covers the published core fixture slice; source
+policy, evidence admission, orchestration, lifecycle, and graph-analysis
+implementations remain Python-focused.
+
+Patch releases preserve documented behavior and machine-readable error codes
+where practical. Minor releases may add contracts, fields, or capabilities and
+may require explicit consumer migration. Consumers must pin a released version
+and must not depend on repository internals, untagged branches, or local runtime
+state. Alpha status means the protocol and APIs may still change before a
+stable 1.0 compatibility commitment.
 
 ## First Validation
 
@@ -87,9 +147,15 @@ execution system. It is the protocol core and reference implementation. A
 consumer can embed the package, run it in CI, exchange its JSON artifacts, or
 place an HTTP/event adapter around it without changing the protocol semantics.
 
+Development happens in the local working tree. The tagged package, signed
+release assets, schemas, fixtures, and conformance materials are the public
+compatibility surface; see [docs/LOCAL_PUBLIC_BOUNDARY.md](docs/LOCAL_PUBLIC_BOUNDARY.md)
+for the promotion rules.
+
 Start with the [Protocol 0.1 draft](ATMANATIC_PROTOCOL_0.1_DRAFT.md), the
 [conformance review package](interop/CONFORMANCE_REVIEW.md), or the
-[architecture appendix](docs/architecture/README.md).
+[architecture appendix](docs/architecture/README.md). New consumers should
+also follow the [consumer guide](docs/CONSUMER_GUIDE.md).
 
 ## Atmanatic Protocol 0.1
 
