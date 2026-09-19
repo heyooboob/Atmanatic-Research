@@ -120,6 +120,7 @@ jobs:
           name: release-manifest
           path: dist/release_manifest.json
       - name: Publish GitHub Release assets
+        if: github.run_attempt == 1
         uses: softprops/action-gh-release@v2
         with:
           tag_name: ${{ github.ref_name }}
