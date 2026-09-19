@@ -1,0 +1,14 @@
+version: 2
+updates:
+  - package-ecosystem: pip
+    directory: "/"
+    schedule:
+      interval: monthly
+    open-pull-requests-limit: 5
+    versioning-strategy: increase-if-necessary
+
+  - package-ecosystem: npm
+    directory: "/interop/reference-ts"
+    schedule:
+      interval: monthly
+    open-pull-requests-limit: 5

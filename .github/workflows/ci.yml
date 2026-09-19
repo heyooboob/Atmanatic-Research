@@ -5,7 +5,7 @@ on:
   pull_request:
 
 permissions:
-  contents: write
+  contents: read
 
 jobs:
   python:
@@ -84,6 +84,11 @@ jobs:
     if: startsWith(github.ref, 'refs/tags/v')
     runs-on: ubuntu-latest
     needs: [python, typescript]
+    environment:
+      name: pypi
+    permissions:
+      contents: write
+      id-token: write
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-python@v5
@@ -91,12 +96,14 @@ jobs:
           python-version: "3.12"
       - name: Install build tooling and the signing extra
         run: python -m pip install --upgrade pip setuptools && python -m pip install .[signing]
+      - name: Build the exact wheel for release
+        run: python -m pip wheel . --no-deps --wheel-dir dist
       - name: Check the tag matches the declared package version
         run: python scripts/check_release_tag.py "${{ github.ref_name }}"
       - name: Sign the release manifest
         env:
           ATMANATIC_RELEASE_PRIVATE_KEY: ${{ secrets.ATMANATIC_RELEASE_PRIVATE_KEY }}
-        run: python scripts/sign_release.py --tag "${{ github.ref_name }}"
+        run: python scripts/sign_release.py --tag "${{ github.ref_name }}" --wheel dist/atmanatic_research-*.whl
       - name: Verify the signed release manifest
         run: python scripts/verify_release_manifest.py dist/release_manifest.json
       - name: Build the Protocol 0.1 conformance archive
@@ -116,3 +123,8 @@ jobs:
             dist/release_manifest.json
             dist/atmanatic-protocol-0.1-conformance.zip
             interop/INTEROPERABILITY_REPORT.md
+      - name: Publish package to PyPI
+        uses: pypa/gh-action-pypi-publish@release/v1
+        with:
+          packages-dir: dist/
+          skip-existing: false

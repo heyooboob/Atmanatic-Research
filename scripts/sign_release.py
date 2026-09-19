@@ -31,7 +31,7 @@ from atmanatic_research import (  # noqa: E402
     public_key_from_private_key,
     sign_record,
 )
-from inspect_release import inspect_release  # noqa: E402
+from inspect_release import hash_wheel, inspect_release, inspect_wheel_contents  # noqa: E402
 
 DEFAULT_KEY_REGISTRY_PATH = REPO_ROOT / "release" / "keys.jsonl"
 DEFAULT_MANIFEST_PATH = REPO_ROOT / "dist" / "release_manifest.json"
@@ -86,12 +86,31 @@ def sign_release(
     return sign_record(manifest, private_key_bytes=private_key_bytes, key_id=key_id)
 
 
+def summarize_wheel(wheel_path: Path) -> dict[str, Any]:
+    """Summarize the exact wheel that will be signed and published."""
+    members = inspect_wheel_contents(wheel_path)
+    return {
+        "wheel_name": wheel_path.name,
+        "sha256": hash_wheel(wheel_path),
+        "member_count": len(members),
+        "top_level_packages": sorted(
+            {name.split("/", 1)[0] for name in members if "/" in name or name.endswith(".py")}
+        ),
+    }
+
+
 def main() -> int:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--tag", required=True, help="the release tag being signed, e.g. v0.1.0")
     parser.add_argument("--producer", default="atmanatic-release-ci")
     parser.add_argument("--registry", type=Path, default=DEFAULT_KEY_REGISTRY_PATH)
     parser.add_argument("--out", type=Path, default=DEFAULT_MANIFEST_PATH)
+    parser.add_argument(
+        "--wheel",
+        type=Path,
+        default=None,
+        help="sign this already-built wheel instead of building a temporary inspection wheel",
+    )
     args = parser.parse_args()
 
     private_key_hex = os.environ.get("ATMANATIC_RELEASE_PRIVATE_KEY")
@@ -101,7 +120,11 @@ def main() -> int:
 
     try:
         signed = sign_release(
-            tag=args.tag, producer=args.producer, private_key_hex=private_key_hex, registry_path=args.registry
+            tag=args.tag,
+            producer=args.producer,
+            private_key_hex=private_key_hex,
+            registry_path=args.registry,
+            wheel_summary=summarize_wheel(args.wheel) if args.wheel is not None else None,
         )
     except SignReleaseError as error:
         print(f"SIGN_RELEASE_FAILED: {error}", file=sys.stderr)

@@ -1,0 +1,1 @@
+{"algorithm": "ed25519", "created_at": "2026-09-19T16:19:48.668251+00:00", "key_id": "dffbba405561f3fdedeb220cae8abd6e33444de13c59957079edf8733b8ae6a0", "producer": "Atmanatic Research release authority", "public_key": "9776a7be2558a9bc1302a90924e3bbb19212564d52772b3d3f50c98e9b52d89f", "revocation_reason": null, "revoked_at": null, "schema_version": 1, "status": "active"}

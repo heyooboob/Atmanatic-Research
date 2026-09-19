@@ -1,0 +1,20 @@
+name: Protocol or conformance question
+description: Ask about artifact contracts, schemas, fixtures, or interoperability
+title: "[Question]: "
+labels:
+  - question
+body:
+  - type: textarea
+    id: question
+    attributes:
+      label: Question
+      description: State the exact protocol or implementation question.
+    validations:
+      required: true
+  - type: textarea
+    id: context
+    attributes:
+      label: Context
+      description: Include the relevant document, schema, fixture, code path, or consumer implementation.
+    validations:
+      required: true

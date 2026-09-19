@@ -1,5 +1,8 @@
 # Atmanatic Research
 
+[Apache-2.0 licensed](LICENSE) Python reference implementation and protocol
+corpus for bounded, evidence-linked, reviewable research artifacts.
+
 Atmanatic is a protocol and Python reference implementation for turning claims
 into bounded, evidence-linked, reviewable artifacts. It helps a research,
 compliance, audit, or agent workflow answer:
@@ -38,6 +41,11 @@ For a release, prefer the wheel attached to the matching GitHub Release. The
 Protocol 0.1 conformance archive is available from CI as
 `atmanatic-protocol-0.1-conformance.zip` for consumers implementing the
 protocol in another language.
+
+The repository is currently private while the first public release is being
+prepared. See [CONTRIBUTING.md](CONTRIBUTING.md) for local checks and protocol
+change expectations, and [SECURITY.md](SECURITY.md) for private vulnerability
+reporting.
 
 ## First Validation
 

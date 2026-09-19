@@ -8,9 +8,31 @@ version = "0.1.0"
 description = "Domain-neutral research, evidence, and validity contracts owned by Atmanatic Research Institution"
 requires-python = ">=3.11"
 dependencies = []
+license = { file = "LICENSE" }
+keywords = ["research", "evidence", "provenance", "validation", "interoperability", "agentic-systems"]
+classifiers = [
+	"Development Status :: 3 - Alpha",
+	"Intended Audience :: Developers",
+	"Intended Audience :: Science/Research",
+	"License :: OSI Approved :: Apache Software License",
+	"Programming Language :: Python :: 3",
+	"Programming Language :: Python :: 3.11",
+	"Programming Language :: Python :: 3.12",
+	"Topic :: Scientific/Engineering",
+	"Topic :: Software Development :: Libraries",
+]
+
+[project.urls]
+Homepage = "https://github.com/heyooboob/Atmanatic-Research"
+Repository = "https://github.com/heyooboob/Atmanatic-Research"
+Issues = "https://github.com/heyooboob/Atmanatic-Research/issues"
+Security = "https://github.com/heyooboob/Atmanatic-Research/security"
 
 [project.optional-dependencies]
 signing = ["cryptography>=42"]
+
+[project.scripts]
+atmanatic-skill = "atmanatic_research.skill_cli:main"
 
 [tool.setuptools.packages.find]
 where = ["."]

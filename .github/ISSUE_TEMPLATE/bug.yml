@@ -1,0 +1,40 @@
+name: Bug report
+description: Report a reproducible defect in the reference implementation or protocol tooling
+title: "[Bug]: "
+labels:
+  - bug
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Please do not include secrets, private keys, personal data, or consumer data.
+        Use the Security tab for vulnerabilities.
+  - type: textarea
+    id: summary
+    attributes:
+      label: What happened?
+      description: Describe the observed behavior and the behavior you expected.
+    validations:
+      required: true
+  - type: textarea
+    id: reproduction
+    attributes:
+      label: Minimal reproduction
+      description: Include the smallest safe input, command, or fixture that demonstrates the issue.
+      render: text
+    validations:
+      required: true
+  - type: input
+    id: version
+    attributes:
+      label: Version or commit
+      placeholder: v0.1.0 or commit SHA
+    validations:
+      required: true
+  - type: textarea
+    id: environment
+    attributes:
+      label: Environment
+      description: Include Python or Node version, operating system, and relevant configuration.
+    validations:
+      required: true

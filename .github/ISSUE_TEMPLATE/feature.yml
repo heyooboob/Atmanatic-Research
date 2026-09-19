@@ -1,0 +1,27 @@
+name: Feature or protocol proposal
+description: Propose a focused improvement to the implementation or protocol
+title: "[Proposal]: "
+labels:
+  - enhancement
+body:
+  - type: textarea
+    id: problem
+    attributes:
+      label: Problem and consumer need
+      description: What concrete consumer workflow or interoperability problem would this solve?
+    validations:
+      required: true
+  - type: textarea
+    id: proposal
+    attributes:
+      label: Proposed behavior
+      description: Describe the contract, inputs, outputs, rejection behavior, and authority boundary.
+    validations:
+      required: true
+  - type: textarea
+    id: compatibility
+    attributes:
+      label: Compatibility and evidence
+      description: Explain schema, error-code, fixture, implementation, and migration impact.
+    validations:
+      required: true

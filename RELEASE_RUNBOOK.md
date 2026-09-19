@@ -57,19 +57,38 @@ execution; a release manifest's `execution_authorized` field is always
 4. The tag push triggers the `release` job in `.github/workflows/ci.yml`,
    which:
    - waits for the `python` and `typescript` jobs on the same commit;
-   - runs `scripts/check_release_tag.py` — fails closed if the tag and
-     `pyproject.toml` disagree;
-   - runs `scripts/sign_release.py --tag <tag>` — builds the wheel, computes
-     its hash, and signs a manifest with the CI secret key; fails closed if
-     that key is not `active` in `release/keys.jsonl`;
-   - runs `scripts/verify_release_manifest.py dist/release_manifest.json` —
-     re-verifies the manifest before anything is published;
+    - runs `scripts/check_release_tag.py` — fails closed if the tag and
+       `pyproject.toml` disagree;
+    - builds the exact wheel into `dist/` before signing, so the signed
+       `wheel_sha256` identifies the wheel that is published;
+    - runs `scripts/sign_release.py --tag <tag>` — computes the exact wheel's
+       hash and signs a manifest with the CI secret key; fails closed if that key
+       is not `active` in `release/keys.jsonl`;
+    - runs `scripts/verify_release_manifest.py dist/release_manifest.json` —
+       re-verifies the manifest before anything is published;
     - builds `dist/atmanatic-protocol-0.1-conformance.zip`;
     - publishes the wheel, signed manifest, conformance archive, and generated
-       interoperability report as assets on the GitHub Release.
+       interoperability report as assets on the GitHub Release;
+    - publishes the wheel to PyPI through the configured trusted publisher.
+
 5. Retain that artifact (and the wheel it describes) as the release's
-   provenance record. Retain the prior release's manifest and wheel too —
-   never delete the last known-good artifact when publishing a new one.
+    provenance record. Retain the prior release's manifest and wheel too —
+    never delete the last known-good artifact when publishing a new one.
+
+### PyPI trusted publishing
+
+Configure a PyPI publishing record for the `atmanatic-steward` account before
+the first release:
+
+- owner: `heyooboob`;
+- repository: `Atmanatic-Research`;
+- workflow: `.github/workflows/ci.yml`;
+- environment: `pypi`.
+
+The publish step uses GitHub's OIDC identity token and does not use a stored
+PyPI API token. The `pypi` GitHub environment is restricted to release tags;
+organizations with multiple maintainers should additionally require approval
+from an appropriate release maintainer before the first public release.
 
 ## Verifying a release later
 
