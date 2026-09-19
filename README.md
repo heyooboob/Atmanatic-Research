@@ -1,36 +1,98 @@
-# Atmanatic Research Institution
+# Atmanatic Research
 
-This is the standalone Atmanatic research project.
+Atmanatic is a protocol and Python reference implementation for turning claims
+into bounded, evidence-linked, reviewable artifacts. It helps a research,
+compliance, audit, or agent workflow answer:
+
+- What exactly is being claimed?
+- What evidence supports it, and is that evidence admissible?
+- What would falsify it?
+- Did an independent reviewer challenge it?
+- What was verified, in what scope, and when must it be revalidated?
+
+The result is a replayable decision trail rather than an opaque confidence
+score. Invalid, stale, conflicting, self-reviewed, or authority-claiming
+artifacts fail closed. A successful validation never authorizes deployment,
+transactions, or execution.
+
+## Use It In A Workflow
+
+```text
+proposal -> evidence -> challenge -> verification -> bounded validity -> human promotion
+```
+
+Atmanatic is useful when one person's, agent's, or service's output will become
+another system's input and the handoff needs durable provenance. Consumers keep
+their own models, storage, transport, credentials, and operational authority;
+Atmanatic supplies the contracts and gates at the boundary.
+
+## Install From GitHub
+
+Install the current repository revision directly:
+
+```powershell
+python -m pip install git+https://github.com/heyooboob/Atmanatic-Research.git
+```
+
+For a release, prefer the wheel attached to the matching GitHub Release. The
+Protocol 0.1 conformance archive is available from CI as
+`atmanatic-protocol-0.1-conformance.zip` for consumers implementing the
+protocol in another language.
+
+## First Validation
+
+```python
+from atmanatic_research import validate_artifact_lineage
+
+artifact = {
+	"schema_version": 1,
+	"artifact_id": "research-result-001",
+	"parent_artifact_ids": [],
+	"producer": "my-research-pipeline",
+	"created_at": "2026-09-19T12:00:00Z",
+	"content_hash": "a" * 64,
+	"execution_authorized": False,
+}
+
+validated = validate_artifact_lineage(artifact)
+```
+
+Use the public validators to reject malformed or non-authorizing artifacts at
+your system boundary. Add evidence admission, independent review, verification
+results, and validity transitions as the workflow becomes decision-grade.
+
+## What Consumers Get
+
+| Need | Atmanatic provides |
+| --- | --- |
+| Portable handoffs | Versioned JSON-compatible artifacts |
+| Provenance | Lineage, producer, timestamps, hashes, and evidence references |
+| Adversarial review | Structured findings, responses, and independent reviewer linkage |
+| Deterministic checks | Verification-result envelopes and replayable validators |
+| Bounded decisions | Explicit validity levels, expiry, revalidation, and rollback metadata |
+| Interoperability | Normative schemas, fixtures, canonical hash parity, and error codes |
+
+## Important Boundary
+
+This repository is not a hosted API, model provider, workflow engine, or
+execution system. It is the protocol core and reference implementation. A
+consumer can embed the package, run it in CI, exchange its JSON artifacts, or
+place an HTTP/event adapter around it without changing the protocol semantics.
+
+Start with the [Protocol 0.1 draft](ATMANATIC_PROTOCOL_0.1_DRAFT.md), the
+[conformance review package](interop/CONFORMANCE_REVIEW.md), or the
+[architecture appendix](docs/architecture/README.md).
 
 ## Atmanatic Protocol 0.1
 
-The project's immediate standards-track milestone is
-[Atmanatic Protocol 0.1](ATMANATIC_PROTOCOL_0.1_DRAFT.md), a vendor-neutral
+The immediate standards-track milestone is [Atmanatic Protocol 0.1](ATMANATIC_PROTOCOL_0.1_DRAFT.md), a vendor-neutral
 working draft for exchanging verifiable claims, evidence, and review outcomes
 between humans, AI agents, and software systems.
 
 The protocol is broader than this Python package and narrower than an AI
 platform. It defines portable artifacts, validation semantics, review linkage,
 and bounded validity transitions. It does not define model providers,
-orchestration, storage, transport, or execution authority. The draft also
-identifies the schemas, canonical serialization, security, conformance,
-independent implementations, and open governance still required before the
-work can credibly seek recognition as an official standard.
-
-Atmanatic owns domain-neutral research contracts, evidence and provenance
-structures, validity packets, falsification and review rules, source-policy
-evaluation, and deterministic research transformations.
-
-The project also maintains a grounded architecture appendix describing the
-separation between optimization, memory, verification, and authority. These
-materials provide file-by-file invariants, rejection conditions, and hardening
-standards for deterministic, fail-closed operation. They are implementation
-guides for the package and do not modify the protocol claim model or grant
-execution authority.
-
-External consumers may use this project's published package or API, but they
-are not included in this project and have no shared filesystem, database,
-credential, treasury, or execution relationship here.
+orchestration, storage, transport, or execution authority.
 
 ## Architecture appendix
 

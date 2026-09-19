@@ -4,6 +4,9 @@ on:
   push:
   pull_request:
 
+permissions:
+  contents: write
+
 jobs:
   python:
     runs-on: ubuntu-latest
@@ -96,8 +99,20 @@ jobs:
         run: python scripts/sign_release.py --tag "${{ github.ref_name }}"
       - name: Verify the signed release manifest
         run: python scripts/verify_release_manifest.py dist/release_manifest.json
+      - name: Build the Protocol 0.1 conformance archive
+        run: python interop/build_conformance_package.py
       - name: Upload the signed release manifest
         uses: actions/upload-artifact@v4
         with:
           name: release-manifest
           path: dist/release_manifest.json
+      - name: Publish GitHub Release assets
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: ${{ github.ref_name }}
+          generate_release_notes: true
+          files: |
+            dist/*.whl
+            dist/release_manifest.json
+            dist/atmanatic-protocol-0.1-conformance.zip
+            interop/INTEROPERABILITY_REPORT.md

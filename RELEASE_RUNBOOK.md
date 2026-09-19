@@ -64,7 +64,9 @@ execution; a release manifest's `execution_authorized` field is always
      that key is not `active` in `release/keys.jsonl`;
    - runs `scripts/verify_release_manifest.py dist/release_manifest.json` —
      re-verifies the manifest before anything is published;
-   - uploads `dist/release_manifest.json` as a workflow artifact.
+    - builds `dist/atmanatic-protocol-0.1-conformance.zip`;
+    - publishes the wheel, signed manifest, conformance archive, and generated
+       interoperability report as assets on the GitHub Release.
 5. Retain that artifact (and the wheel it describes) as the release's
    provenance record. Retain the prior release's manifest and wheel too —
    never delete the last known-good artifact when publishing a new one.
