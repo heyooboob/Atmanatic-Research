@@ -86,7 +86,7 @@ from an independent Atmanatic project rather than a shared source tree.
 
 ## Packaging milestone on 2026-09-16
 
-Root `pyproject.toml` now builds `atmanatic-research` version `0.1.1` with
+Root `pyproject.toml` now builds `atmanatic-research` version `0.1.2` with
 only `atmanatic_research` and `validity_protocol` packages and no runtime
 dependencies. The wheel was inspected successfully: it contains no
 consumer files. External consumers still need to use this released artifact
