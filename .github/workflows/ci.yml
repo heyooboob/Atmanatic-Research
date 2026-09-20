@@ -115,7 +115,7 @@ jobs:
       - name: Build the Protocol 0.1 conformance archive
         run: python interop/build_conformance_package.py
       - name: Upload the signed release manifest
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
         with:
           name: release-manifest
           path: dist/release_manifest.json
