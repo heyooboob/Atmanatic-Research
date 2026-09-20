@@ -52,7 +52,7 @@ Verified directly against the repository, not against the plan documents:
 
 | Area | State |
 | --- | --- |
-| Package | `atmanatic-research` 0.1.6, zero required runtime deps (`cryptography` optional via the `signing` extra), `requires-python >= 3.11`, wheel builds clean |
+| Package | `atmanatic-research` 0.1.7, zero required runtime deps (`cryptography` optional via the `signing` extra), `requires-python >= 3.11`, wheel builds clean |
 | Tests | 227 Python tests and 26 TypeScript tests, all passing |
 | Contracts implemented | proposal, artifact, evidence, promotion-record, benchmark, review, source-policy, validity governance, orchestration + audit events, graph analysis, verification-result envelopes, and key-record envelopes |
 | Orchestration | proposer/referee loop, typed findings/responses, non-progress detection, time budgets, escalation requests, deterministic audit events — all implemented (Phase 3 substantially complete) |
