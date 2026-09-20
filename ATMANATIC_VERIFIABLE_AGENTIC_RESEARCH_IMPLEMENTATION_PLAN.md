@@ -4,7 +4,7 @@
 **Effective:** 2026-09-17  
 **Owner:** Atmanatic Research Institution  
 **Primary consumers:** independent research consumers  
-**Baseline package:** `atmanatic-research` 0.1.4
+**Baseline package:** `atmanatic-research` 0.1.5
 **Immediate milestone:** [Atmanatic Protocol 0.1](ATMANATIC_PROTOCOL_0.1_DRAFT.md)
 
 ## 1. Purpose

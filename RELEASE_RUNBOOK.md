@@ -98,9 +98,11 @@ against the tagged package or published release assets only.
     - runs `scripts/verify_release_manifest.py dist/release_manifest.json` —
        re-verifies the manifest before anything is published;
     - builds `dist/atmanatic-protocol-0.1-conformance.zip`;
-    - publishes the wheel, signed manifest, conformance archive, and generated
-       interoperability report as assets on the GitHub Release;
-    - publishes the wheel to PyPI through the configured trusted publisher.
+   - publishes the wheel to PyPI through the configured trusted publisher;
+    - creates the GitHub Release with the wheel, signed manifest, conformance
+       archive, and generated interoperability report when that tag has no
+       existing release. Reruns skip immutable GitHub Release assets and use
+       PyPI's `skip-existing` behavior instead of mutating prior artifacts.
 
 5. Retain that artifact (and the wheel it describes) as the release's
     provenance record. Retain the prior release's manifest and wheel too —

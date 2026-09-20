@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "atmanatic-research"
-version = "0.1.4"
+version = "0.1.5"
 description = "Domain-neutral research, evidence, and validity contracts owned by Atmanatic Research Institution"
 readme = "README.md"
 requires-python = ">=3.11"
