@@ -100,7 +100,11 @@ against the tagged package or published release assets only.
     - builds `dist/atmanatic-protocol-0.1-conformance.zip`;
    - publishes the wheel to PyPI through the configured trusted publisher;
     - creates the GitHub Release with the wheel, signed manifest, conformance
-       archive, and generated interoperability report when that tag has no
+      archive, and generated interoperability report when that tag has no
+      existing release. Reruns skip immutable GitHub Release assets and use
+      PyPI's `skip-existing` behavior instead of mutating prior artifacts.
+      Release creation uses the GitHub CLI rather than an asset-reconciling
+      action, so an existing immutable release is never modified.
        existing release. Reruns skip immutable GitHub Release assets and use
        PyPI's `skip-existing` behavior instead of mutating prior artifacts.
 
